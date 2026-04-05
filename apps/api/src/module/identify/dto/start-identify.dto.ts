@@ -7,12 +7,17 @@ export enum IdentifySessionType {
 }
 
 export class StartIdentifyDto {
-  @ApiProperty({ enum: IdentifySessionType, example: IdentifySessionType.SINGLE })
+  @ApiProperty({
+    enum: IdentifySessionType,
+    example: IdentifySessionType.SINGLE,
+  })
   @IsEnum(IdentifySessionType)
   @IsNotEmpty()
   session_type: IdentifySessionType;
 
-  @ApiProperty({ example: 'https://storage.example.com/identifications/test.wav' })
+  @ApiProperty({
+    example: 'https://storage.example.com/identifications/test.wav',
+  })
   @IsString()
   @IsNotEmpty()
   audio_url: string;

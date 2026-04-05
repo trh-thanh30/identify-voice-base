@@ -10,7 +10,10 @@ export class VoicesController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new voice record' })
-  @ApiResponse({ status: 201, description: 'Voice record successfully created' })
+  @ApiResponse({
+    status: 201,
+    description: 'Voice record successfully created',
+  })
   async create(@Body() dto: CreateVoiceRecordDto) {
     return this.voicesService.create(dto);
   }

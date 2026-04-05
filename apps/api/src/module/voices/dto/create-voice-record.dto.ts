@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsJSON, IsObject } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsObject } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateVoiceRecordDto {

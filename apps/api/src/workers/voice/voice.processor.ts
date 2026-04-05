@@ -12,7 +12,7 @@ export class VoiceProcessor extends WorkerHost {
   }
 
   async process(job: Job<any, any, string>): Promise<any> {
-    const { sessionId, audioUrl, sessionType } = job.data;
+    const { sessionId } = job.data;
     this.logger.log(
       `Processing voice identification for session: ${sessionId}`,
     );

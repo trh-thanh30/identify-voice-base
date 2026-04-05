@@ -19,7 +19,7 @@ export class RegisterUserUseCase implements BaseUseCase<RegisterUserDto, any> {
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
-    const { password, ...rest } = await this.prisma.auth_accounts.create({
+    const { ...rest } = await this.prisma.auth_accounts.create({
       data: {
         username: dto.username,
         password: hashedPassword,

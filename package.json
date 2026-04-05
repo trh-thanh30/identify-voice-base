@@ -1,5 +1,6 @@
 {
   "name": "voice-identify-service",
+  "packageManager": "pnpm@9.15.4",
   "private": true,
   "scripts": {
     "prepare": "husky",
@@ -47,10 +48,12 @@
     "schema": "apps/api/prisma/schema.prisma"
   },
   "devDependencies": {
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.7",
     "@commitlint/cli": "^20.4.2",
     "@commitlint/config-conventional": "^20.4.2",
+    "@eslint/compat": "^2.0.4",
+    "@eslint/js": "^10.0.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.4.2",
     "turbo": "^2.8.10",
     "typescript": "5.9.2"

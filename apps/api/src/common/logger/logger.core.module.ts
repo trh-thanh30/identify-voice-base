@@ -14,11 +14,13 @@ const onlyContext = (ctx: string) =>
 
 // Format cho base logger (non-HTTP logs)
 const baseConsoleFormat = winston.format.printf(
-  ({ level, message, timestamp, context, ...rest }) => {
+  ({ level, message, timestamp, context, ...rest }: any) => {
     const app = process.env.APP_NAME ?? 'MyApp';
     const meta = Object.keys(rest).length ? ` ${JSON.stringify(rest)}` : '';
-    const ctx = context ? `[${context}]` : '';
-    return `[${app}] ${process.pid} ${timestamp} ${level.toUpperCase()}${ctx} ${message}${meta}`;
+    const ctx = typeof context === 'string' ? `[${context}]` : '';
+    const ts = String(timestamp);
+    const lvl = String(level).toUpperCase();
+    return `[${app}] ${process.pid} ${ts} ${lvl}${ctx} ${message}${meta}`;
   },
 );
 

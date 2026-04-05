@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { StartIdentifySessionUseCase } from '../use-cases/start-identify-session.usecase';
 import { StartIdentifyDto } from '../dto/start-identify.dto';
+import { StartIdentifySessionUseCase } from '../use-cases/start-identify-session.usecase';
 
 @Injectable()
 export class IdentifyService {
@@ -12,7 +12,7 @@ export class IdentifyService {
     return this.startIdentifySessionUseCase.execute({ ...dto, userId });
   }
 
-  async getResult(sessionId: string) {
-    // Logic to retrieve results from identify_sessions table
-  }
+  // async getResult(_sessionId: string) {
+  //   // Logic to retrieve results from identify_sessions table
+  // }
 }

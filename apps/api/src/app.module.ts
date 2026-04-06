@@ -15,6 +15,7 @@ import {
   jwtConfig,
   rateLimitConfig,
   redisConfig,
+  storageConfig,
   validateEnv,
 } from './config';
 
@@ -29,6 +30,8 @@ import { PrismaModule } from './database/prisma/prisma.module';
 import { AuthModule } from './module/auth/auth.module';
 import { UserAuthModule } from './module/user-auth/user-auth.module';
 import { IdentifyModule } from './module/identify/identify.module';
+import { StorageModule } from './module/storage/storage.module';
+import { UploadModule } from './module/upload/upload.module';
 import { VoicesModule } from './module/voices/voices.module';
 import { DocsModule } from './module/docs/docs.module';
 
@@ -55,6 +58,7 @@ import { DocsModule } from './module/docs/docs.module';
         cookieConfig,
         clientConfig,
         redisConfig,
+        storageConfig,
       ],
     }),
     ThrottlerModule.forRootAsync({
@@ -75,6 +79,8 @@ import { DocsModule } from './module/docs/docs.module';
     PrismaModule,
     AuthModule,
     UserAuthModule,
+    StorageModule,
+    UploadModule,
     VoicesModule,
     IdentifyModule,
     DocsModule,

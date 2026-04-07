@@ -3,7 +3,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { join } from 'path';
 
 // config
 import {
@@ -26,9 +28,9 @@ import { HttpLogInterceptor } from './common/interceptors/http-logger.intercepto
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 // modules
+import { AiCoreModule } from '@/module/ai-core/ai-core.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { PrismaModule } from './database/prisma/prisma.module';
-import { AiModule } from './module/ai/ai.module';
 import { AuthModule } from './module/auth/auth.module';
 import { DocsModule } from './module/docs/docs.module';
 import { EnrollModule } from './module/enroll/enroll.module';
@@ -65,6 +67,10 @@ import { VoicesModule } from './module/voices/voices.module';
         aiConfig,
       ],
     }),
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'storage'),
+      serveRoot: '/cdn',
+    }),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -87,7 +93,7 @@ import { VoicesModule } from './module/voices/voices.module';
     UploadModule,
     VoicesModule,
     IdentifyModule,
-    AiModule,
+    AiCoreModule,
     EnrollModule,
     DocsModule,
     ScheduleModule.forRoot(),

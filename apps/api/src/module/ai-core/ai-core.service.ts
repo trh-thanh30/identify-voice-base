@@ -15,8 +15,8 @@ import { catchError, firstValueFrom } from 'rxjs';
 import aiConfig from '@/config/ai.config';
 
 @Injectable()
-export class AiService {
-  private readonly logger = new Logger(AiService.name);
+export class AiCoreService {
+  private readonly logger = new Logger(AiCoreService.name);
 
   constructor(
     private readonly httpService: HttpService,
@@ -45,16 +45,14 @@ export class AiService {
       filename: fs.existsSync(filePath) ? path.basename(filePath) : 'audio.wav',
       contentType: mimeType,
     });
-    // formData.append('name', name); // Gửi qua query params thay vì body
 
     try {
       const { data } = await firstValueFrom(
         this.httpService
           .post(`${this.config.url}/upload_voice`, formData, {
-            params: { name }, // Gửi name qua query string (?name=...)
+            params: { name },
             headers: {
               ...formData.getHeaders(),
-              // ...(this.config.apiKey && { 'X-API-KEY': this.config.apiKey }),
             },
             timeout: this.config.timeout,
           })
@@ -65,7 +63,6 @@ export class AiService {
                 error.response?.data,
               );
 
-              // Bạn có thể tùy biến mapping lỗi ở đây
               throw new InternalServerErrorException(
                 error.response?.data?.['message'] ||
                   'Lỗi khi kết nối tới AI Service',
@@ -84,9 +81,6 @@ export class AiService {
     }
   }
 
-  /**
-   * Ví dụ phương thức khác: Nhận diện giọng nói
-   */
   async identifyVoice(filePath: string): Promise<any> {
     const formData = new FormData();
     formData.append('file', fs.createReadStream(filePath));

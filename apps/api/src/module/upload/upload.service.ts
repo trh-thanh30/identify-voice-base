@@ -105,7 +105,10 @@ export class UploadService {
     purpose: AudioPurpose,
     uploadedBy: string,
   ): Promise<audio_files> {
-    // ── Tầng 0: Validate Mime Type ──
+    if (!file) {
+      throw new UnprocessableEntityException('Vui lòng cung cấp file audio');
+    }
+
     if (!this.cfg.isMimeAllowed(file.mimetype)) {
       throw new UnprocessableEntityException(
         `Định dạng file không được hỗ trợ: ${file.mimetype}`,
@@ -123,10 +126,8 @@ export class UploadService {
     const destDir = PURPOSE_DIR[purpose];
     const fileName = `${fileId}.${ext}`;
 
-    // ── Tầng 3a: Validate duration qua music-metadata (đọc từ buffer) ──
     const durationSec = await this._getDuration(file.buffer, purpose);
 
-    // ── Tầng 3b: Tạo stream từ buffer và đẩy vào storage ──
     const fileStream = Readable.from(file.buffer);
     const { storageKey } = await this.storage
       .save(fileStream, destDir, fileName)

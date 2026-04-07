@@ -5,15 +5,16 @@ import {
   Logger,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import * as path from 'path';
 import type { ConfigType } from '@nestjs/config';
 import { AudioPurpose, Prisma } from '@prisma/client';
+import * as path from 'path';
 
 import storageConfig from '@/config/storage.config';
 import { PrismaService } from '@/database/prisma/prisma.service';
-import { AiService } from '@/module/ai/ai.service';
 import { UploadService } from '@/module/upload/upload.service';
 
+import { UploadFileResponse } from '@/common/types/ai-upload-file-response.type';
+import { AiCoreService } from '@/module/ai-core/ai-core.service';
 import { EnrollVoiceDto } from '../dto/enroll-voice.dto';
 
 @Injectable()
@@ -23,7 +24,7 @@ export class EnrollVoiceUseCase {
   constructor(
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
-    private readonly aiService: AiService,
+    private readonly core: AiCoreService,
     @Inject(storageConfig.KEY)
     private readonly config: ConfigType<typeof storageConfig>,
   ) {}
@@ -56,7 +57,7 @@ export class EnrollVoiceUseCase {
         audioFile.file_path,
       );
 
-      const aiResponse = await this.aiService.uploadVoice(
+      const aiResponse: UploadFileResponse = await this.core.uploadVoice(
         absolutePath,
         dto.name,
         audioFile.mime_type,
@@ -87,13 +88,16 @@ export class EnrollVoiceUseCase {
       );
     }
 
+    // Tạo audio_url hoàn chỉnh
+    const audioUrl = `${this.config.cdnUrl}/${audioFile.file_path}`;
+
     // 3. Thực hiện Prisma Transaction để lưu Metadata và VoiceRecord
     try {
       const result = await this.prisma.$transaction(async (tx) => {
         // Tạo User record với ID trùng với voice_id từ AI
         const user = await tx.users.create({
           data: {
-            id: voiceId,
+            id: voiceId, // Sử dụng voice_id làm ID nếu nó là UUID hợp lệ
             name: dto.name,
             citizen_identification: dto.citizen_identification,
             phone_number: dto.phone_number,
@@ -103,6 +107,7 @@ export class EnrollVoiceUseCase {
             criminal_record: dto.criminal_record
               ? (JSON.parse(dto.criminal_record) as Prisma.JsonArray)
               : Prisma.JsonNull,
+            audio_url: audioUrl, // Lưu URL audio vào hồ sơ user
           },
         });
 
@@ -110,6 +115,7 @@ export class EnrollVoiceUseCase {
         const voiceRecord = await tx.voice_records.create({
           data: {
             user_id: user.id,
+            user_name: user.name, // Snapshot name
             voice_id: voiceId,
             audio_file_id: audioFile.id,
             is_active: true,
@@ -119,9 +125,6 @@ export class EnrollVoiceUseCase {
 
         return { user, voiceRecord };
       });
-
-      // Tạo audio_url hoàn chỉnh để trả về cho Client
-      const audioUrl = `${this.config.cdnUrl}/${audioFile.file_path}`;
 
       this.logger.log(`Enroll thành công: ${voiceId}`);
 

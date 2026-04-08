@@ -1,98 +1,281 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🎙️ Voice Identify Service - Backend API Overview
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+The backend of the **Voice Identify Service** is a high-performance **NestJS** application designed with scalability, reliability, and security in mind. It serves as the primary orchestration layer for the platform, managing authentication, voice record management, and identification session processing.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 🏗️ Architecture & Philosophy
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+The backend is built using a **Clean Architecture** approach, specifically the **Use-Case Pattern**. This is inspired by the `ecommerce-base` project structure, providing a clear separation between infrastructure (database, workers) and business logic.
 
-## Project setup
+### Directory Structure
 
-```bash
-$ pnpm install
+```text
+apps/api
+├── prisma              # Database management
+│   ├── schema.prisma   # PostgreSQL models
+│   └── migrations      # Database history
+├── src
+│   ├── common          # Universal NestJS components
+│   │   ├── filters     # Global exception handling
+│   │   ├── guards      # Auth & Throttler guards
+│   │   └── interceptors # Logging & JSON responses
+│   ├── config          # Dynamic environment config
+│   │   ├── index.ts    # Main config export
+│   │   ├── app.config.ts # API server settings
+│   │   └── database.config.ts # Prisma Pg settings
+│   ├── database        # Resource providers
+│   │   ├── prisma      # Prisma Service & Module
+│   │   └── redis       # Redis connection provider
+│   ├── module          # Feature-based business logic
+│   │   ├── auth        # User Identity & Security
+│   │   ├── enroll      # Voice Registration & AI Enrolling
+│   │   ├── voices      # Profile & Record management
+│   │   └── identify    # AI Integration & Sessions
+│   ├── shared          # Global reusable artifacts
+│   │   ├── interfaces  # BaseUseCase defined here
+│   │   └── constants   # Global status codes
+│   ├── workers         # Background processing
+│   │   ├── voice       # Job processors for identification
+│   │   ├── worker.module.ts # Context for job processing
+│   │   └── worker.main.ts   # Entry point for the worker
+│   ├── main.ts         # Main API entry point (HTTP)
+│   └── app.module.ts   # Root NestJS module
+├── Dockerfile          # Multi-stage Docker build
+└── package.json        # Service dependencies
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ pnpm run start
+## 🔑 Core Features and Modules
 
-# watch mode
-$ pnpm run start:dev
+### 1. Authentication Module (`/auth`)
 
-# production mode
-$ pnpm run start:prod
+We use JWT-based authentication for secure access. The module follows the Use-Case pattern:
+
+- **`RegisterUserUseCase`**: Handles creation of accounts with password hashing.
+- **`LoginUserUseCase`**: Verifies credentials and generates a signed access token.
+- **`AuthService`**: Orchestrates these use-cases.
+
+### 2. Enroll Module (`/voices/enroll`)
+
+Quản lý việc đăng ký thông tin người dùng mới cùng mẫu giọng nói mẫu.
+
+- **`EnrollVoiceUseCase`**: Thực hiện toàn bộ quy trình từ nhận file, gọi AI Service trích xuất đặc trưng, đến lưu trữ hồ sơ tập trung vào database.
+- **AI Service Integration**: Tự động đồng bộ `voice_id` từ hệ thống AI và lưu URL audio phục vụ tra cứu.
+
+### 3. Voices Module (`/voices`)
+
+This module manages the "Ground Truth" of voice records.
+
+- **`CreateVoiceRecordUseCase`**: Saves a new voice profile (CCCD, Phone, Audio Metadata).
+- **`GetVoiceRecordUseCase`**: Retrieves detailed voice profiles.
+
+### 3. Identify Module (`/identify`)
+
+This is the heart of the system.
+
+- **`StartIdentifySessionUseCase`**: When a user submits an audio for identification, this use-case creates a session in PostgreSQL and enqueues a job in **Redis (BullMQ)** for processing.
+- **Status tracking**: Sessions track the state of identification (PENDING, PROCESSING, COMPLETED, FAILED).
+
+---
+
+## 🛠️ Background Processing (Worker)
+
+To keep the API responsive, heavy identification tasks are offloaded to our background worker system.
+
+### BullMQ Integration
+
+The `IdentifyModule` pushes a job:
+
+```typescript
+// Enqueue job for background processing
+await this.voiceQueue.add('identify-voice', {
+  sessionId: session.id,
+  audioUrl: session.audio_url,
+  sessionType: session.session_type,
+});
 ```
 
-## Run tests
+The `VoiceProcessor` at `apps/api/src/workers/voice/voice.processor.ts` picks it up:
 
-```bash
-# unit tests
-$ pnpm run test
+1.  **Extract Data**: Receives the session ID and audio source.
+2.  **AI Processing**: Placeholder for calling the identification engine.
+3.  **Update Database**: Writes back the identification results (Confidence, Match).
 
-# e2e tests
-$ pnpm run test:e2e
+### Worker Entry Point
 
-# test coverage
-$ pnpm run test:cov
+The worker has its own entry point `worker.main.ts`. It initializes a `NestFactory.createApplicationContext(WorkerModule)`, which avoids booting up the HTTP server and overhead while still having access to Prisma and Config services.
+
+---
+
+## 💾 Database Management: Prisma 7
+
+The project uses **Prisma v7** for database orchestration. We utilize the `PrismaPg` adapter to manage PostgreSQL connections via a pre-configured `pg` Pool.
+
+### Key Config (PrismaService.ts)
+
+```typescript
+const pool = new Pool({
+  connectionString,
+  max: 12,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
+const adapter = new PrismaPg(pool);
+super({ adapter });
 ```
 
-## Deployment
+### Database Models & Snake Case
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+We strictly use `snake_case` for database column and table names to align with standard PostgreSQL conventions, while maintaining `camelCase` in our TypeScript application via Prisma mapping.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+```prisma
+model voice_records {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @db.VarChar(255)
+  cccd       String   @unique @db.VarChar(12)
+  phone      String   @db.VarChar(15)
+  audio_url  String   @db.Text
+  metadata   Json?    @db.JsonB
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @updatedAt @db.Timestamp(6)
+}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## ⚙️ Configuration System
 
-Check out a few resources that may come in handy when working with NestJS:
+Our configuration system is dynamic and validates environment variables on startup.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Environments
 
-## Support
+- `.env.development`: For local coding.
+- `.env.production`: For containerized deployment.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Validation Schema (`validateEnv`)
 
-## Stay in touch
+Located in `apps/api/src/config/index.ts`, we use `class-validator` and `class-transformer` to ensure all required fields like `DATABASE_URL`, `JWT_SECRET`, and `REDIS_HOST` are present. If a variable is missing, the backend will fail-fast and throw an error with a detailed report.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### Configuration Registry
 
-## License
+- **`app`**: Server port, environment (dev/prod).
+- **`database`**: PostgreSQL connection strings and pool settings.
+- **`jwt`**: Secret keys and expiration timings.
+- **`redis`**: Host, port, and authentication for BullMQ.
+- **`throttler`**: Rate limiting thresholds (default 10 requests per minute).
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+---
+
+## 📖 API Documentation (Swagger)
+
+The backend provides built-in API documentation available at `/api/docs`.
+
+- **Tags**: Organized by feature (Auth, Voices, Identify).
+- **DTOs**: Every request/response is documented with examples and validation requirements.
+- **Bearer Auth**: JWT protection is visualized in the UI for easy testing.
+
+### Swagger Documentation Rules
+
+1.  All exposed variables must have `@ApiProperty()`.
+2.  All controllers must specify `@ApiTags()`.
+3.  Error responses (`401`, `403`, `404`) must be explicitly documented using `@ApiResponse()`.
+
+---
+
+## 🛡️ Security Best Practices
+
+### 1. Robust Rate Limiting
+
+We use `ThrottlerModule` to protect all API endpoints from brute-force attacks and resource exhaustion.
+
+### 2. Standardized JWT Guards
+
+A customized `JwtAuthGuard` ensures all endpoints in `IdentifyModule` and `VoicesModule` (protected routes) are secured.
+
+### 3. Response Standardization
+
+All API responses are wrapped by the `ResponseInterceptor` at `apps/api/src/common/interceptors/response.interceptor.ts`.
+
+### Standard Success Format:
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Operation successful",
+  "meta": {
+    "timestamp": "2026-04-04T15:26:00Z"
+  }
+}
+```
+
+### Standard Error Format:
+
+Managed by the `AllExceptionsFilter`, providing a clear error trace for debugging while shielding internal database details from production users.
+
+---
+
+## 🏗️ Use-Case Pattern Implementation example
+
+The project follows a **Clean Architecture** approach using the **Use-Case Pattern**. Instead of bloated services, every business action is encapsulated in a specific class.
+
+### Example: RegisterUserUseCase
+
+Located in `apps/api/src/module/auth/use-cases/register-user.usecase.ts`:
+
+1.  **Validate input**: Check if user exists.
+2.  **Secure data**: Hash the password using bcrypt.
+3.  **Persist**: Save the account to the database via Prisma.
+4.  **Return**: Return the created user (masking sensitive data).
+
+### Benefits of the Use-Case Pattern:
+
+- **Testability**: Each use-case can be unit-tested in isolation, without mocking entire services.
+- **Readability**: Clear boundaries for business logic. Each file does one thing.
+- **Maintainability**: Changes in one feature (e.g., Auth) don't impact others (e.g., Identify).
+
+---
+
+## 🐳 Docker Deployment Strategy
+
+The `Dockerfile` is optimized for NestJS. It uses a multi-stage approach to minimize the final image size and reduce the attack surface.
+
+### Builder Stage
+
+- Uses `node:20-alpine`.
+- Installs all dependencies.
+- Compiles TypeScript to JavaScript in the `dist/` directory.
+
+### Runner Stage
+
+- Only copies `package.json`, production `node_modules`, and the `dist/` folder.
+- Sets `NODE_ENV` to production.
+- Runs as a non-root user for enhanced security.
+
+To start the API and Worker in production mode:
+
+```bash
+docker compose up api worker -d
+```
+
+---
+
+## 📊 Monitoring & Logging
+
+We utilize **Winston** for structured logging across the application. Logs include:
+
+- **HTTP Logs**: Captured by `HttpLogInterceptor`.
+- **System Logs**: Application lifecycle events.
+- **Error Logs**: Persistent trace of all failures.
+
+All logs are formatted as JSON in production for easy ingestion by ELK or Grafana Loki stacks.
+
+---
+
+## 📞 Support and Team
+
+This backend was architected by the **SSIT Engineering Team**. For questions regarding the identification algorithm or database schema, please reach out via GitHub Issues.
+
+---

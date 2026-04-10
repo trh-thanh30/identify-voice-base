@@ -414,7 +414,7 @@ export class CriminalRecordItemDto {
   @Max(2100)
   year: number;
 }
-```
+````
 
 ---
 
@@ -422,4 +422,4 @@ export class CriminalRecordItemDto {
 
 1. **`PUT` không thay đổi embedding:** Thông tin cá nhân (tên, CCCD, điện thoại...) lưu trong PostgreSQL độc lập với đặc trưng giọng nói (vector embedding trong Qdrant). Hai hệ thống liên kết qua `voice_id`.
 2. **`audio_available: false`:** Nếu file bị xóa tay ngoài hệ thống, response vẫn trả dữ liệu bình thường nhưng đánh dấu `audio_available: false`. Frontend nên ẩn nút phát audio trong trường hợp này.
-3. **Xóa đồng bộ 3 nơi:** Nếu bất kỳ bước nào thất bại (đặc biệt là Qdrant — phụ thuộc mạng nội bộ), toàn bộ thao tác bị rollback về trạng thái ban đầu.
+3. **Ưu tiên tiêu hủy Biometric:** Nếu bước xóa Qdrant thất bại, hệ thống dừng lại ngay lập tức và giữ nguyên dữ liệu trong DB để đảm bảo không mất dấu vết (traceability) và cho phép xóa lại sau. Các bước sau (xóa file, xóa DB) sẽ chỉ thực hiện nếu biometric data đã được xác nhận tiêu hủy thành công.

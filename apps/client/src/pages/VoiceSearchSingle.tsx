@@ -1,11 +1,14 @@
-import { Search } from "lucide-react";
+import { LoaderCircle, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { VoiceErrorDialog } from "@/feature/voice/components/voice-error-dialog";
 import { VoiceSingleSearchForm } from "@/feature/voice/components/voice-single-search-form";
 import { VoiceAudioPlayer } from "@/feature/voice/components/voice-audio-player";
 import { VoiceTop5MatchTable } from "@/feature/voice/components/voice-top5-match-table";
 import { VoiceEnrollDialog } from "@/feature/voice/components/voice-enroll-dialog";
 import { useVoiceStore } from "@/feature/voice";
+
+const SINGLE_SEARCH_FORM_ID = "voice-single-search-form";
 
 function isUnknownSingle(item: {
   matched_voice_id?: string;
@@ -27,6 +30,7 @@ export default function VoiceSearchSingle() {
 
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [openEnrollDialog, setOpenEnrollDialog] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     resetIdentifyResult();
@@ -52,27 +56,56 @@ export default function VoiceSearchSingle() {
               Nhận diện giọng nói 1 người
             </h1>
             <p className="max-w-3xl text-sm text-muted-foreground">
-              Tải file audio có một người nói để tra cứu top 5 kết quả phù hợp
-              nhất.
+              Tải file audio có 1 người nói để tra cứu
             </p>
           </div>
         </section>
 
         <VoiceSingleSearchForm
+          formId={SINGLE_SEARCH_FORM_ID}
+          autoSubmitOnAudioChange
+          showSubmitButton={false}
+          onPendingChange={setIsSearching}
           onFileSelected={(file) => {
             setAudioFile(file);
             resetIdentifyResult();
           }}
         />
 
-        <VoiceAudioPlayer file={audioFile} title="Audio tra cứu" />
-
-        <VoiceTop5MatchTable
-          title="Kết quả phù hợp"
-          description="Kết quả được sắp xếp theo điểm số giảm dần."
-          items={items}
-          emptyText="Chưa có kết quả nhận diện."
+        <VoiceAudioPlayer
+          file={audioFile}
+          title="Audio tra cứu"
+          footerAction={
+            <Button
+              type="submit"
+              form={SINGLE_SEARCH_FORM_ID}
+              variant="outline"
+              className="shadow-md hover:shadow-lg"
+              disabled={isSearching}
+            >
+              {isSearching ? (
+                <>
+                  <LoaderCircle className="mr-2 size-4 animate-spin" />
+                  Đang tra cứu...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 size-4" />
+                  Tra cứu 1 người
+                </>
+              )}
+            </Button>
+          }
         />
+
+        {items.length > 0 ? (
+          <VoiceTop5MatchTable
+            title="Kết quả phù hợp"
+            description="Sắp xếp theo điểm số giảm dần."
+            items={items}
+            emptyText="Chưa có kết quả nhận diện."
+          />
+        ) : null}
 
         {shouldShowUnknownCta && audioFile ? (
           <div className="rounded-2xl border border-dashed p-5">

@@ -13,6 +13,7 @@ export class AudioValidationPipe implements PipeTransform {
     'audio/mpeg',
     'audio/flac',
     'audio/ogg',
+    'audio/webm',
     'audio/x-wav',
     'audio/x-flac',
   ];
@@ -43,7 +44,7 @@ export class AudioValidationPipe implements PipeTransform {
     for (const f of allFiles) {
       if (!this.ALLOWED_MIMETYPES.includes(f.mimetype)) {
         throw new BadRequestException(
-          'Định dạng file không được hỗ trợ. Chỉ chấp nhận WAV, MP3, FLAC, OGG',
+          'Định dạng file không được hỗ trợ. Chỉ chấp nhận WAV, MP3, FLAC, OGG, WEBM',
         );
       }
     }

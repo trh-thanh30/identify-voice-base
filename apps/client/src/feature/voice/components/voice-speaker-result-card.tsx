@@ -121,8 +121,8 @@ export function VoiceSpeakerResultCard({
 
         {!isUnknown ? (
           <VoiceTop5MatchTable
-            title="Kết quả phù hợp"
-            description="Thông tin người nói được nhận diện dựa trên dữ liệu đã đăng ký."
+            title="Kết quả"
+            description=""
             items={top5Items}
             emptyText="Không có dữ liệu phù hợp."
             speakerIndex={speakerIndex}

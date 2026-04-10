@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import WaveSurfer from "wavesurfer.js";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Play, Pause } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface VoiceAudioPlayerProps {
   file: File | null;
@@ -10,6 +11,8 @@ interface VoiceAudioPlayerProps {
   startAt?: number;
   endAt?: number;
   onReady?: () => void;
+  footerAction?: ReactNode;
+  footerActionWrapperClassName?: string;
 }
 
 function formatTime(seconds: number) {
@@ -25,6 +28,8 @@ export function VoiceAudioPlayer({
   startAt,
   endAt,
   onReady,
+  footerAction,
+  footerActionWrapperClassName,
 }: VoiceAudioPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const waveSurferRef = useRef<WaveSurfer | null>(null);
@@ -83,6 +88,7 @@ export function VoiceAudioPlayer({
         window.clearTimeout(stopTimerRef.current);
         stopTimerRef.current = null;
       }
+
       waveSurfer.destroy();
       waveSurferRef.current = null;
       setIsReady(false);
@@ -91,6 +97,7 @@ export function VoiceAudioPlayer({
       setDuration(0);
     };
   }, [audioUrl, onReady]);
+
   useEffect(() => {
     const wave = waveSurferRef.current;
     if (!wave || !isReady) return;
@@ -109,9 +116,12 @@ export function VoiceAudioPlayer({
         window.clearTimeout(stopTimerRef.current);
       }
 
-      stopTimerRef.current = window.setTimeout(() => {
-        wave.pause();
-      }, (endAt - startAt) * 1000);
+      stopTimerRef.current = window.setTimeout(
+        () => {
+          wave.pause();
+        },
+        (endAt - startAt) * 1000,
+      );
     }
   }, [startAt, endAt, isReady]);
 
@@ -140,7 +150,7 @@ export function VoiceAudioPlayer({
           <div ref={containerRef} className="w-full" />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <Button
             type="button"
             variant="outline"
@@ -164,10 +174,16 @@ export function VoiceAudioPlayer({
             {formatTime(currentTime)} / {formatTime(duration)}
           </div>
 
-          <div className="truncate text-sm text-muted-foreground">
+          <div className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
             {file.name}
           </div>
         </div>
+
+        {footerAction ? (
+          <div className={cn("flex justify-end", footerActionWrapperClassName)}>
+            {footerAction}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

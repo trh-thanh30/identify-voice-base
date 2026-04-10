@@ -16,6 +16,7 @@ const AUDIO_MIME_MAP: Record<string, string> = {
   'audio/flac': 'flac',
   'audio/x-flac': 'flac',
   'audio/ogg': 'ogg',
+  'audio/webm': 'webm',
 };
 
 /**
@@ -23,7 +24,7 @@ const AUDIO_MIME_MAP: Record<string, string> = {
  */
 export default registerAs('storage', () => {
   const allowedMimes = (
-    process.env.STORAGE_ALLOWED_MIMES ?? 'audio/mpeg,audio/wav'
+    process.env.STORAGE_ALLOWED_MIMES ?? 'audio/mpeg,audio/wav,audio/webm'
   ).split(',');
 
   return {

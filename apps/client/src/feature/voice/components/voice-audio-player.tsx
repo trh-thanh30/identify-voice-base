@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import WaveSurfer from "wavesurfer.js";
-import { Play, Pause } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,9 @@ interface VoiceAudioPlayerProps {
   footerAction?: ReactNode;
   footerActionWrapperClassName?: string;
 }
+
+const WAVEFORM_FALLBACK_MESSAGE =
+  "Khong the tai waveform cho file audio nay. Ban van co the phat bang trinh phat mac dinh ben duoi.";
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds)) return "00:00";
@@ -39,6 +42,7 @@ export function VoiceAudioPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [audioError, setAudioError] = useState<string | null>(null);
 
   const audioUrl = useMemo(() => {
     if (!file) return null;
@@ -47,56 +51,121 @@ export function VoiceAudioPlayer({
 
   useEffect(() => {
     return () => {
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
     };
   }, [audioUrl]);
 
   useEffect(() => {
-    if (!containerRef.current || !audioUrl) {
+    if (!containerRef.current || !file) {
       return;
     }
 
-    const waveSurfer = WaveSurfer.create({
-      container: containerRef.current,
-      height: 96,
-      waveColor: "#cbd5e1",
-      progressColor: "#0f172a",
-      cursorColor: "#ef4444",
-      barWidth: 2,
-      barGap: 1,
-      barRadius: 2,
-      normalize: true,
-      dragToSeek: true,
-      url: audioUrl,
+    let isDisposed = false;
+    let frameId: number | null = null;
+    let waveSurfer: WaveSurfer | null = null;
+
+    frameId = window.requestAnimationFrame(() => {
+      if (!containerRef.current || isDisposed) {
+        return;
+      }
+
+      waveSurfer = WaveSurfer.create({
+        container: containerRef.current,
+        height: 96,
+        waveColor: "#cbd5e1",
+        progressColor: "#0f172a",
+        cursorColor: "#ef4444",
+        barWidth: 2,
+        barGap: 1,
+        barRadius: 2,
+        normalize: true,
+        dragToSeek: true,
+        backend: "MediaElement",
+      });
+
+      waveSurferRef.current = waveSurfer;
+
+      waveSurfer.on("ready", () => {
+        if (isDisposed || !waveSurfer) return;
+
+        setAudioError(null);
+        setIsReady(true);
+        setDuration(waveSurfer.getDuration());
+        onReady?.();
+      });
+
+      waveSurfer.on("play", () => {
+        if (!isDisposed) {
+          setIsPlaying(true);
+        }
+      });
+
+      waveSurfer.on("pause", () => {
+        if (!isDisposed) {
+          setIsPlaying(false);
+        }
+      });
+
+      waveSurfer.on("finish", () => {
+        if (!isDisposed) {
+          setIsPlaying(false);
+        }
+      });
+
+      waveSurfer.on("timeupdate", (time) => {
+        if (!isDisposed) {
+          setCurrentTime(time);
+        }
+      });
+
+      waveSurfer.on("error", (error) => {
+        if (isDisposed) return;
+
+        setAudioError(error.message || WAVEFORM_FALLBACK_MESSAGE);
+        setIsReady(false);
+        setIsPlaying(false);
+        setCurrentTime(0);
+        setDuration(0);
+      });
+
+      void waveSurfer.loadBlob(file).catch((error) => {
+        if (isDisposed) return;
+
+        setAudioError(
+          error instanceof Error && error.message
+            ? error.message
+            : WAVEFORM_FALLBACK_MESSAGE,
+        );
+        setIsReady(false);
+        setIsPlaying(false);
+        setCurrentTime(0);
+        setDuration(0);
+      });
     });
-
-    waveSurferRef.current = waveSurfer;
-
-    waveSurfer.on("ready", () => {
-      setIsReady(true);
-      setDuration(waveSurfer.getDuration());
-      onReady?.();
-    });
-
-    waveSurfer.on("play", () => setIsPlaying(true));
-    waveSurfer.on("pause", () => setIsPlaying(false));
-    waveSurfer.on("finish", () => setIsPlaying(false));
-    waveSurfer.on("timeupdate", (time) => setCurrentTime(time));
 
     return () => {
+      isDisposed = true;
+
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+
       if (stopTimerRef.current) {
         window.clearTimeout(stopTimerRef.current);
         stopTimerRef.current = null;
       }
 
-      waveSurfer.destroy();
+      waveSurfer?.destroy();
       waveSurferRef.current = null;
+      setAudioError(null);
       setIsReady(false);
       setIsPlaying(false);
       setCurrentTime(0);
       setDuration(0);
     };
-  }, [audioUrl, onReady]);
+  }, [file, onReady]);
 
   useEffect(() => {
     const wave = waveSurferRef.current;
@@ -110,7 +179,7 @@ export function VoiceAudioPlayer({
       Number.isFinite(endAt) &&
       endAt > startAt
     ) {
-      wave.play();
+      void wave.play();
 
       if (stopTimerRef.current) {
         window.clearTimeout(stopTimerRef.current);
@@ -134,10 +203,18 @@ export function VoiceAudioPlayer({
       return;
     }
 
-    await wave.play();
+    try {
+      await wave.play();
+    } catch (error) {
+      setAudioError(
+        error instanceof Error && error.message
+          ? error.message
+          : WAVEFORM_FALLBACK_MESSAGE,
+      );
+    }
   };
 
-  if (!file || !audioUrl) return null;
+  if (!file) return null;
 
   return (
     <Card className="rounded-2xl">
@@ -147,37 +224,60 @@ export function VoiceAudioPlayer({
 
       <CardContent className="space-y-4">
         <div className="rounded-xl border bg-background p-3">
-          <div ref={containerRef} className="w-full" />
+          <div
+            ref={containerRef}
+            className={cn("w-full", audioError && "hidden")}
+          />
+
+          {audioError && audioUrl ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {WAVEFORM_FALLBACK_MESSAGE}
+              </p>
+              <audio
+                controls
+                preload="metadata"
+                src={audioUrl}
+                className="w-full"
+              />
+            </div>
+          ) : null}
         </div>
 
-        <div className="flex min-w-0 flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={togglePlay}
-            disabled={!isReady}
-          >
-            {isPlaying ? (
-              <>
-                <Pause className="mr-2 size-4" />
-                Tạm dừng
-              </>
-            ) : (
-              <>
-                <Play className="mr-2 size-4" />
-                Phát
-              </>
-            )}
-          </Button>
+        {!audioError ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={togglePlay}
+              disabled={!isReady}
+            >
+              {isPlaying ? (
+                <>
+                  <Pause className="mr-2 size-4" />
+                  Tạm dừng
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 size-4" />
+                  Phát
+                </>
+              )}
+            </Button>
 
-          <div className="text-sm text-muted-foreground">
-            {formatTime(currentTime)} / {formatTime(duration)}
+            <div className="text-sm text-muted-foreground">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </div>
+
+            <div className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+              {file.name}
+            </div>
           </div>
-
-          <div className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+        ) : (
+          <div className="min-w-0 truncate text-sm text-muted-foreground">
             {file.name}
           </div>
-        </div>
+        )}
 
         {footerAction ? (
           <div className={cn("flex justify-end", footerActionWrapperClassName)}>

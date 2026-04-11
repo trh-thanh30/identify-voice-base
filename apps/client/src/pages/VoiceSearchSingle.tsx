@@ -1,28 +1,14 @@
 import { LoaderCircle, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { VoiceAudioPlayer } from "@/feature/voice/components/voice-audio-player";
+import { VoiceEnrollDialog } from "@/feature/voice/components/voice-enroll-dialog";
 import { VoiceErrorDialog } from "@/feature/voice/components/voice-error-dialog";
 import { VoiceSingleSearchForm } from "@/feature/voice/components/voice-single-search-form";
-import { VoiceAudioPlayer } from "@/feature/voice/components/voice-audio-player";
 import { VoiceTop5MatchTable } from "@/feature/voice/components/voice-top5-match-table";
-import { VoiceEnrollDialog } from "@/feature/voice/components/voice-enroll-dialog";
 import { useVoiceStore } from "@/feature/voice";
 
 const SINGLE_SEARCH_FORM_ID = "voice-single-search-form";
-
-function isUnknownSingle(item: {
-  matched_voice_id?: string;
-  message?: string;
-}) {
-  const message = (item.message || "").toLowerCase();
-
-  return (
-    !item.matched_voice_id ||
-    message.includes("no matching") ||
-    message.includes("unknown") ||
-    message.includes("not found")
-  );
-}
 
 export default function VoiceSearchSingle() {
   const { identifyResult, errorDialog, closeErrorDialog, resetIdentifyResult } =
@@ -40,8 +26,8 @@ export default function VoiceSearchSingle() {
   }, [resetIdentifyResult]);
 
   const items = identifyResult?.items ?? [];
-  const hasKnownMatch = items.some((item) => !isUnknownSingle(item));
-  const shouldShowUnknownCta = items.length === 0 || !hasKnownMatch;
+  const hasAudioFile = Boolean(audioFile);
+  const hasSearchResult = identifyResult !== null;
 
   return (
     <>
@@ -98,30 +84,32 @@ export default function VoiceSearchSingle() {
           }
         />
 
-        {items.length > 0 ? (
+        {hasSearchResult ? (
           <VoiceTop5MatchTable
             title="Kết quả phù hợp"
             description="Sắp xếp theo điểm số giảm dần."
             items={items}
+            audioUrl={identifyResult?.audio_url}
             emptyText="Chưa có kết quả nhận diện."
           />
         ) : null}
 
-        {shouldShowUnknownCta && audioFile ? (
+        {hasAudioFile ? (
           <div className="rounded-2xl border border-dashed p-5">
-            <div className="space-y-2">
-              <p className="font-semibold">Không tìm thấy người phù hợp?</p>
-              <p className="text-sm text-muted-foreground">
-                Có thể mở popup đăng ký giọng nói mới bằng chính file audio vừa
-                tải lên.
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="font-semibold">
+                {items.length > 0
+                  ? "Top 5 bên trên chưa đúng người?"
+                  : "Đăng ký giọng nói từ file hiện tại"}
               </p>
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                className="shrink-0 shadow-lg hover:shadow-xl"
                 onClick={() => setOpenEnrollDialog(true)}
-                className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
               >
                 Đăng ký giọng nói
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}

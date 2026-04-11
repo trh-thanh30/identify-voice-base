@@ -45,6 +45,13 @@ function normalizeCriminalRecord(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+function extractAudioUrl(payload: unknown): string | undefined {
+  if (!isRecord(payload)) return undefined;
+
+  const value = asString(payload.audio_url, "");
+  return value || undefined;
+}
+
 function appendIfPresent(formData: FormData, key: string, value: string) {
   const trimmedValue = value.trim();
   if (trimmedValue) {
@@ -206,6 +213,7 @@ export const voiceApi = {
     );
 
     const { data } = unwrapApiResponse(response.data);
+    const audioUrl = extractAudioUrl(data);
 
     const items = extractSpeakerItems(data)
       .map(normalizeIdentifyItem)
@@ -215,6 +223,7 @@ export const voiceApi = {
 
     return {
       items,
+      audio_url: audioUrl,
       raw: response.data,
     };
   },
@@ -229,6 +238,7 @@ export const voiceApi = {
     );
 
     const { data } = unwrapApiResponse(response.data);
+    const audioUrl = extractAudioUrl(data);
 
     const items = extractSpeakerItems(data)
       .map(normalizeIdentifyTwoItem)
@@ -236,6 +246,7 @@ export const voiceApi = {
 
     return {
       items,
+      audio_url: audioUrl,
       raw: response.data,
     };
   },

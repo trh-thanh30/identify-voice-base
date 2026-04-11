@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import {
   useFieldArray,
   useForm,
@@ -7,6 +8,7 @@ import {
 } from "react-hook-form";
 import { LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { cropAudioFile } from "@/utils/audio.utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -18,17 +20,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useUploadVoice } from "../hooks/use-voice";
 import {
   uploadVoiceSchema,
   type UploadVoiceSchemaInput,
   type UploadVoiceSchemaOutput,
 } from "../schemas/voice.schema";
-import { useUploadVoice } from "../hooks/use-voice";
+import type { VoiceIdentifyTwoItem } from "../types/voice.types";
 import { VoiceAudioDropzone } from "./voice-audio-dropzone";
 import { VoiceAudioPlayer } from "./voice-audio-player";
-import { cropAudioFile } from "@/utils/audio.utils";
-import type { VoiceIdentifyTwoItem } from "../types/voice.types";
-import { useEffect } from "react";
 
 interface VoiceUploadFormProps {
   initialFile?: File | null;
@@ -46,6 +46,25 @@ function getYearOptions() {
 
 const YEAR_OPTIONS = getYearOptions();
 
+function getResetValues(
+  initialFile: File | null,
+  initialStart?: number,
+  initialEnd?: number,
+) {
+  return {
+    name: "",
+    citizenIdentification: "",
+    phoneNumber: "",
+    hometown: "",
+    job: "",
+    passport: "",
+    criminalRecords: [],
+    audioFile: initialFile,
+    start: initialStart,
+    end: initialEnd,
+  };
+}
+
 export function VoiceUploadForm({
   initialFile = null,
   initialStart,
@@ -60,18 +79,7 @@ export function VoiceUploadForm({
     UploadVoiceSchemaOutput
   >({
     resolver: zodResolver(uploadVoiceSchema),
-    defaultValues: {
-      name: "",
-      citizenIdentification: "",
-      phoneNumber: "",
-      hometown: "",
-      job: "",
-      passport: "",
-      criminalRecords: [],
-      audioFile: initialFile,
-      start: initialStart,
-      end: initialEnd,
-    },
+    defaultValues: getResetValues(initialFile, initialStart, initialEnd),
   });
 
   const watchedAudioFile = useWatch({
@@ -84,39 +92,11 @@ export function VoiceUploadForm({
     name: "criminalRecords",
   });
 
-  // Reset form when initial values change (e.g. switching between speakers)
   useEffect(() => {
-    form.reset({
-      name: "",
-      citizenIdentification: "",
-      phoneNumber: "",
-      hometown: "",
-      job: "",
-      passport: "",
-      criminalRecords: [],
-      audioFile: initialFile,
-      start: initialStart,
-      end: initialEnd,
-    });
+    form.reset(getResetValues(initialFile, initialStart, initialEnd));
   }, [initialFile, initialStart, initialEnd, form]);
 
-  const uploadMutation = useUploadVoice({
-    onSuccess: () => {
-      form.reset({
-        name: "",
-        citizenIdentification: "",
-        phoneNumber: "",
-        hometown: "",
-        job: "",
-        passport: "",
-        criminalRecords: [],
-        audioFile: initialFile,
-        start: initialStart,
-        end: initialEnd,
-      });
-      onUploadSuccess?.();
-    },
-  });
+  const uploadMutation = useUploadVoice();
 
   const onSubmit: SubmitHandler<UploadVoiceSchemaOutput> = async (values) => {
     try {
@@ -128,6 +108,7 @@ export function VoiceUploadForm({
         typeof initialEnd === "number"
       ) {
         const loadingToast = toast.loading("Đang xử lý cắt âm thanh...");
+
         try {
           fileToUpload = await cropAudioFile(
             fileToUpload,
@@ -153,9 +134,10 @@ export function VoiceUploadForm({
         audioFile: fileToUpload,
       });
 
-      // Construct partial result info to update UI immediately
+      form.reset(getResetValues(initialFile, initialStart, initialEnd));
+
       onUploadSuccess?.({
-        matched_voice_id: response.voice_id || "pending", // Use real ID from response if possible
+        matched_voice_id: response.voice_id || "pending",
         name: values.name.trim(),
         citizen_identification: values.citizenIdentification.trim(),
         phone_number: values.phoneNumber.trim(),
@@ -166,241 +148,249 @@ export function VoiceUploadForm({
         score: 1.0,
       });
     } catch {
-      // Error handled by useUploadVoice, but we catch to prevent unhandled rejections
+      // useUploadVoice already handles the error toast
     }
   };
 
-  return (
-    <Card className="rounded-2xl">
-      <CardHeader className={compact ? "pb-3" : undefined}>
-        <CardTitle>Đăng ký giọng nói</CardTitle>
-      </CardHeader>
+  const formContent = (
+    <Form {...form}>
+      <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+        <FormField
+          control={form.control}
+          name="audioFile"
+          render={({ field, fieldState }) => (
+            <FormItem>
+              <FormLabel>File audio</FormLabel>
+              <FormControl>
+                <VoiceAudioDropzone
+                  value={field.value ?? null}
+                  onChange={(file) => {
+                    field.onChange(file);
+                    onFileChange?.();
+                  }}
+                  disabled={uploadMutation.isPending}
+                  error={fieldState.error?.message}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <CardContent>
-        <Form {...form}>
-          <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
-            <FormField
-              control={form.control}
-              name="audioFile"
-              render={({ field, fieldState }) => (
-                <FormItem>
-                  <FormLabel>File audio</FormLabel>
-                  <FormControl>
-                    <VoiceAudioDropzone
-                      value={field.value ?? null}
-                      onChange={(file) => {
-                        field.onChange(file);
-                        onFileChange?.();
-                      }}
-                      disabled={uploadMutation.isPending}
-                      error={fieldState.error?.message}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <VoiceAudioPlayer
+          file={watchedAudioFile ?? null}
+          title="Audio đăng ký"
+          startAt={initialStart}
+          endAt={initialEnd}
+        />
 
-            <VoiceAudioPlayer
-              file={watchedAudioFile ?? null}
-              title="Audio đăng ký"
-            />
+        {watchedAudioFile ? (
+          <>
+            <div className="grid animate-in gap-4 fade-in-0 slide-in-from-bottom-4 duration-300 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Họ tên <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nhập họ tên" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {watchedAudioFile ? (
-              <>
-                <div className="grid gap-4 md:grid-cols-2 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          Họ tên <span className="text-destructive">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nhập họ tên" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <FormField
+                control={form.control}
+                name="citizenIdentification"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CCCD</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nhập CCCD" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <FormField
-                    control={form.control}
-                    name="citizenIdentification"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CCCD</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nhập CCCD" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <FormField
+                control={form.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Số điện thoại</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nhập số điện thoại" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <FormField
-                    control={form.control}
-                    name="phoneNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Số điện thoại</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nhập số điện thoại" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <FormField
+                control={form.control}
+                name="hometown"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quê quán</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nhập quê quán" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <FormField
-                    control={form.control}
-                    name="hometown"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Quê quán</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nhập quê quán" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <FormField
+                control={form.control}
+                name="job"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nghề nghiệp</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nhập nghề nghiệp" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <FormField
-                    control={form.control}
-                    name="job"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nghề nghiệp</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nhập nghề nghiệp" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <FormField
+                control={form.control}
+                name="passport"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Hộ chiếu</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nhập số hộ chiếu" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-                  <FormField
-                    control={form.control}
-                    name="passport"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hộ chiếu</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nhập số hộ chiếu" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <FormLabel>Tiền án tiền sự</FormLabel>
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => append({ case: "", year: "" })}
-                    >
-                      <Plus className="mr-2 size-4" />
-                      Thêm mục
-                    </Button>
-                  </div>
-
-                  {fields.length === 0 ? (
-                    <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                      Chưa có mục nào.
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {fields.map((fieldItem, index) => (
-                        <div
-                          key={fieldItem.id}
-                          className="grid gap-4 rounded-xl border p-4 md:grid-cols-[1fr_180px_auto]"
-                        >
-                          <FormField
-                            control={form.control}
-                            name={`criminalRecords.${index}.case`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Nội dung</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="Ví dụ: Tội trộm cắp"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name={`criminalRecords.${index}.year`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Năm</FormLabel>
-                                <FormControl>
-                                  <select
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                                  >
-                                    <option value="">Chọn năm</option>
-                                    {YEAR_OPTIONS.map((year) => (
-                                      <option key={year} value={year}>
-                                        {year}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <div className="flex items-end">
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              onClick={() => remove(index)}
-                              className="w-full md:w-auto"
-                            >
-                              <Trash2 className="mr-2 size-4" />
-                              Xóa
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <FormLabel>Tiền án tiền sự</FormLabel>
                 </div>
 
                 <Button
-                  type="submit"
-                  disabled={uploadMutation.isPending}
-                  className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300 delay-100"
+                  type="button"
+                  variant="outline"
+                  onClick={() => append({ case: "", year: "" })}
                 >
-                  {uploadMutation.isPending ? (
-                    <>
-                      <LoaderCircle className="mr-2 size-4 animate-spin" />
-                      Đang upload...
-                    </>
-                  ) : (
-                    "Upload voice"
-                  )}
+                  <Plus className="mr-2 size-4" />
+                  Thêm mục
                 </Button>
-              </>
-            ) : null}
-          </form>
-        </Form>
-      </CardContent>
+              </div>
+
+              {fields.length === 0 ? (
+                <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                  Chưa có mục nào.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {fields.map((fieldItem, index) => (
+                    <div
+                      key={fieldItem.id}
+                      className="grid gap-4 rounded-xl border p-4 md:grid-cols-[1fr_180px_auto]"
+                    >
+                      <FormField
+                        control={form.control}
+                        name={`criminalRecords.${index}.case`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nội dung</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Ví dụ: Tội trộm cắp"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name={`criminalRecords.${index}.year`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Năm</FormLabel>
+                            <FormControl>
+                              <select
+                                value={field.value}
+                                onChange={field.onChange}
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                              >
+                                <option value="">Chọn năm</option>
+                                {YEAR_OPTIONS.map((year) => (
+                                  <option key={year} value={year}>
+                                    {year}
+                                  </option>
+                                ))}
+                              </select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex items-end">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          onClick={() => remove(index)}
+                          className="w-full md:w-auto"
+                        >
+                          <Trash2 className="mr-2 size-4" />
+                          Xóa
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Button
+              type="submit"
+              disabled={uploadMutation.isPending}
+              className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300 delay-100 bg-black text-white hover:bg-black/90"
+            >
+              {uploadMutation.isPending ? (
+                <>
+                  <LoaderCircle className="mr-2 size-4 animate-spin" />
+                  Đang upload...
+                </>
+              ) : (
+                "Hoàn Thành Đăng Ký Giọng Nói"
+              )}
+            </Button>
+          </>
+        ) : null}
+      </form>
+    </Form>
+  );
+
+  if (compact) {
+    return <div className="space-y-6">{formContent}</div>;
+  }
+
+  return (
+    <Card className="rounded-2xl">
+      <CardHeader>
+        <CardTitle>Đăng ký giọng nói</CardTitle>
+      </CardHeader>
+
+      <CardContent>{formContent}</CardContent>
     </Card>
   );
 }

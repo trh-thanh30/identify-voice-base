@@ -32,8 +32,6 @@ function formatSeconds(value: number) {
 function isUnknownSpeaker(item: VoiceIdentifyTwoItem) {
   const message = (item.message || "").toLowerCase();
   const matchedId = (item.matched_voice_id || "").toString().trim();
-
-  // If matched_voice_id is empty, "0", or contains common unknown strings
   const hasNoId = !matchedId || matchedId === "0" || matchedId === "-1";
 
   return (
@@ -56,6 +54,7 @@ export function VoiceSpeakerResultCard({
   const [isTimestampOpen, setIsTimestampOpen] = useState(true);
   const isUnknown = isUnknownSpeaker(item);
   const top5Items: VoiceIdentifyItem[] = isUnknown ? [] : [item];
+
   return (
     <Card className="rounded-2xl">
       <CardHeader>
@@ -88,7 +87,7 @@ export function VoiceSpeakerResultCard({
         {item.audio_segment && item.audio_segment.length > 0 ? (
           <div className="space-y-2">
             <div
-              className="flex w-fit cursor-pointer items-center gap-2 rounded-md hover:opacity-80 transition-opacity"
+              className="flex w-fit cursor-pointer items-center gap-2 rounded-md transition-opacity hover:opacity-80"
               onClick={() => setIsTimestampOpen(!isTimestampOpen)}
             >
               <p className="text-sm font-medium">Thời gian xuất hiện</p>
@@ -98,7 +97,7 @@ export function VoiceSpeakerResultCard({
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               )}
             </div>
-            {isTimestampOpen && (
+            {isTimestampOpen ? (
               <div className="flex flex-wrap gap-2 pt-1">
                 {item.audio_segment.map((segment, index) => (
                   <Button
@@ -115,7 +114,7 @@ export function VoiceSpeakerResultCard({
                   </Button>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
         ) : null}
 
@@ -129,16 +128,29 @@ export function VoiceSpeakerResultCard({
           />
         ) : (
           <div className="rounded-2xl border border-dashed p-4">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Chưa tìm thấy người phù hợp
-              </p>
-              <Button type="button" onClick={onRegisterUnknown}>
-                Đăng ký giọng nói
-              </Button>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Chưa tìm thấy người phù hợp
+            </p>
           </div>
         )}
+
+        <div className="rounded-2xl border border-dashed p-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="font-semibold">
+              {!isUnknown
+                ? "Kết quả bên trên chưa đúng người?"
+                : "Đăng ký giọng nói cho speaker này"}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0 shadow-lg hover:shadow-xl"
+              onClick={onRegisterUnknown}
+            >
+              Đăng ký giọng nói
+            </Button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

@@ -76,11 +76,13 @@ export interface UploadVoiceResponse {
 
 export interface IdentifyVoiceResponse {
   items: VoiceIdentifyItem[];
+  audio_url?: string;
   raw: unknown;
 }
 
 export interface IdentifyTwoVoiceResponse {
   items: VoiceIdentifyTwoItem[];
+  audio_url?: string;
   raw: unknown;
 }
 

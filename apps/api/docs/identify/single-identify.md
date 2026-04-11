@@ -59,17 +59,18 @@ Hệ thống trả về một cấu trúc dữ liệu gọn nhẹ để FE xử 
   "message": "Nhận dạng thành công!",
   "data": {
     "session_id": "session-uuid-123",
+    "audio_url": "https://cdn.example.com/uploads/identify/2026/04/audio.wav",
+    "identified_at": "2026-04-11T15:00:00Z",
     "type": "SINGLE",
-    "results": [
+    "speakers": [
       {
-        "label": "speaker_0",
-        "voice_id": "8d4be585-...",
+        "speaker_label": "speaker_0",
+        "matched_voice_id": "8d4be585-...",
         "score": 0.9542,
-        "is_enrolled": true,
-        "identity_type": "BUSINESS_TRUTH",
-        "metadata": {
-          "name": "Nguyễn Văn A"
-        }
+        "name": "Nguyễn Văn A",
+        "citizen_identification": "00120000xxxx",
+        "phone_number": "0901234567",
+        "enroll_audio_url": "https://cdn.example.com/enrolled/audio.wav"
       }
     ]
   }
@@ -93,9 +94,9 @@ Hệ thống trả về một cấu trúc dữ liệu gọn nhẹ để FE xử 
 - **Score 0.7 - 0.9**: Hiển thị màu vàng (Cần lưu ý, độ tin cậy trung bình).
 - **Score < 0.7**: Hiển thị màu đỏ và nhãn "Cần xác minh" hoặc "Không xác định".
 
-### 5.3 Xử lý danh tính chưa Enroll
+### 5.3 Xử lý danh tính chưa xác thực
 
-Nếu kết quả trả về có `is_enrolled: false`, FE nên hiển thị một nút "Vào kho AI để định danh" để người dùng có thể thực hiện quy trình đăng ký nhanh cho người lạ này.
+Nếu kết quả trả về có `matched_voice_id` nhưng không có `enroll_audio_url`, điều này có nghĩa là AI đã nhận dạng được giọng này (tồn tại trong AI Cache) nhưng chưa được gán cho một người dùng thật. FE nên hiển thị nhãn "Danh tính AI" và cung cấp nút "Định danh" để chuyển đổi sang Business Truth.
 
 ---
 

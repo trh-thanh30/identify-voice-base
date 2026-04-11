@@ -114,7 +114,7 @@ export class SessionsService {
 
     return {
       id: session.id,
-      input_audio_url: `${this.storageCfg.cdnUrl}/${session.audio_file.file_path}`,
+      audio_url: `${this.storageCfg.cdnUrl}/${session.audio_file.file_path}`,
       identified_at: session.identified_at,
       operator: session.operator,
       speakers: enrichedSpeakers,

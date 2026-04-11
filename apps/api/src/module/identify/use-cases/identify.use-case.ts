@@ -160,7 +160,7 @@ export class IdentifyUseCase {
 
     return {
       session_id: session.id,
-      input_audio_url: `${this.config.cdnUrl}/${audioFile.file_path}`,
+      audio_url: `${this.config.cdnUrl}/${audioFile.file_path}`,
       identified_at: session.identified_at,
       type,
       speakers: enrichedSpeakers,

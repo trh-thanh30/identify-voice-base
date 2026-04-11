@@ -1,6 +1,7 @@
 import * as React from "react";
 import {
   BookOpenText,
+  BookUser,
   ChevronLeft,
   ChevronRight,
   Home,
@@ -53,6 +54,11 @@ const navigation = [
     title: "Tra cứu 1-2 người",
     url: ROUTES.VOICE_SEARCH_MULTI,
     icon: UsersRound,
+  },
+  {
+    title: "Hồ sơ định danh",
+    url: ROUTES.VOICE_DIRECTORY,
+    icon: BookUser,
   },
   {
     title: "Hướng dẫn sử dụng",
@@ -166,7 +172,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => setIsPasswordDialogOpen(true)}
-                className="h-12 rounded-none border-l-4 border-transparent pl-4 pr-3 text-base font-medium hover:bg-primary-50 hover:text-primary-500 transition-all duration-200 ease-in-out hover:scale-105 w-full"
+                className="h-12 rounded-none border-l-4 border-transparent pl-4 pr-3 text-base font-medium hover:bg-amber-50 hover:text-amber-600 transition-all duration-200 ease-in-out hover:scale-105 w-full"
               >
                 <KeyRound className="size-5 shrink-0" />
                 <span>Đổi mật khẩu</span>
@@ -195,6 +201,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   type="button"
                   size="icon"
                   variant="ghost"
+                  className="hover:bg-amber-50 hover:text-amber-600"
                   onClick={() => setIsPasswordDialogOpen(true)}
                 >
                   <KeyRound className="size-4" />
@@ -309,7 +316,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               >
                 Hủy
               </Button>
-              <Button type="submit" disabled={isSubmittingPassword}>
+              <Button
+                type="submit"
+                disabled={isSubmittingPassword}
+                className="bg-amber-50 text-amber-600 hover:bg-amber-100 hover:text-amber-700"
+              >
                 {isSubmittingPassword ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />

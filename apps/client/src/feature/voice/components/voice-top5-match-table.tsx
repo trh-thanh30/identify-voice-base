@@ -18,12 +18,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { VoiceIdentifyItem } from "../types/voice.types";
+import { getVoiceScoreMeta } from "../utils/voice-score";
 
 interface VoiceTop5MatchTableProps {
   title: string;
   description?: string;
   items: VoiceIdentifyItem[];
-  audioUrl?: string;
   emptyText?: string;
   speakerIndex?: number;
 }
@@ -33,11 +33,14 @@ interface PlayingAudioState {
   audioUrl: string;
 }
 
+function getItemAudioUrl(item: VoiceIdentifyItem) {
+  return item.enroll_audio_url || item.audio_url || undefined;
+}
+
 export function VoiceTop5MatchTable({
   title,
   description,
   items,
-  audioUrl,
   emptyText = "Khong co du lieu.",
   speakerIndex = 0,
 }: VoiceTop5MatchTableProps) {
@@ -45,9 +48,15 @@ export function VoiceTop5MatchTable({
   const [playingAudio, setPlayingAudio] = useState<PlayingAudioState | null>(
     null,
   );
-  const shouldShowAudioColumn = Boolean(audioUrl);
+  const audioSources = items.map(getItemAudioUrl);
+  const audioSourcesKey = audioSources.map((value) => value ?? "").join("|");
+  const shouldShowAudioColumn = items.length > 0;
+  const activeAudioUrl =
+    playingAudio !== null ? audioSources[playingAudio.rowIndex] : undefined;
   const playingRowIndex =
-    playingAudio?.audioUrl === audioUrl ? playingAudio.rowIndex : null;
+    playingAudio && playingAudio.audioUrl === activeAudioUrl
+      ? playingAudio.rowIndex
+      : null;
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -73,25 +82,26 @@ export function VoiceTop5MatchTable({
     audio.pause();
     audio.removeAttribute("src");
     audio.load();
-  }, [audioUrl]);
+  }, [audioSourcesKey]);
 
   const handleToggleAudio = async (rowIndex: number) => {
     const audio = audioRef.current;
-    if (!audio || !audioUrl) return;
+    const rowAudioUrl = audioSources[rowIndex];
+    if (!audio || !rowAudioUrl) return;
 
     if (playingRowIndex === rowIndex && !audio.paused) {
       audio.pause();
       return;
     }
 
-    if (audio.src !== audioUrl) {
-      audio.src = audioUrl;
+    if (audio.src !== rowAudioUrl) {
+      audio.src = rowAudioUrl;
       audio.load();
     }
 
     try {
       await audio.play();
-      setPlayingAudio({ rowIndex, audioUrl });
+      setPlayingAudio({ rowIndex, audioUrl: rowAudioUrl });
     } catch {
       setPlayingAudio(null);
     }
@@ -124,68 +134,80 @@ export function VoiceTop5MatchTable({
                       Audio
                     </TableHead>
                   ) : null}
-                  <TableHead className="w-[20rem] pl-2">Họ và tên</TableHead>
+                  <TableHead className="w-[20rem] pl-2">Ho va ten</TableHead>
                   <TableHead className="w-40 text-center">CCCD</TableHead>
-                  <TableHead className="w-32 text-center">Điện thoại</TableHead>
-                  <TableHead className="w-28 text-center">Điểm số</TableHead>
+                  <TableHead className="w-32 text-center">Dien thoai</TableHead>
+                  <TableHead className="w-40 text-center">Diem so</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item, index) => (
-                  <TableRow
-                    key={`speaker-${speakerIndex}-match-${
-                      item.matched_voice_id || item.name || "unknown"
-                    }-${index}`}
-                  >
-                    <TableCell className="w-12 px-1 text-center">
-                      {index + 1}
-                    </TableCell>
-                    {shouldShowAudioColumn ? (
-                      <TableCell className="w-16 px-1 text-center">
-                        <Button
-                          type="button"
-                          size="icon-sm"
-                          className="mx-auto size-8 rounded-full bg-red-600 text-white shadow-sm hover:bg-red-700"
-                          onClick={() => void handleToggleAudio(index)}
-                          aria-label={
-                            playingRowIndex === index
-                              ? "Tam dung audio"
-                              : "Phat audio"
-                          }
-                          title={
-                            playingRowIndex === index
-                              ? "Tam dung audio"
-                              : "Phat audio"
-                          }
-                        >
-                          {playingRowIndex === index ? (
-                            <Pause className="size-3.5" />
-                          ) : (
-                            <Play className="size-3.5" />
-                          )}
-                        </Button>
+                {items.map((item, index) => {
+                  const rowAudioUrl = audioSources[index];
+                  const scoreMeta = getVoiceScoreMeta(item.score);
+
+                  return (
+                    <TableRow
+                      key={`speaker-${speakerIndex}-match-${
+                        item.matched_voice_id || item.name || "unknown"
+                      }-${index}`}
+                    >
+                      <TableCell className="w-12 px-1 text-center">
+                        {index + 1}
                       </TableCell>
-                    ) : null}
-                    <TableCell className="max-w-[20rem] pl-2 font-medium">
-                      <div className="truncate" title={item.name || "-"}>
-                        {item.name || "-"}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {item.citizen_identification || "-"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {item.phone_number || "-"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary" className="mx-auto">
-                        {typeof item.score === "number"
-                          ? item.score.toFixed(4)
-                          : "-"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      {shouldShowAudioColumn ? (
+                        <TableCell className="w-16 px-1 text-center">
+                          {rowAudioUrl ? (
+                            <Button
+                              type="button"
+                              size="icon-sm"
+                              className="mx-auto size-8 rounded-full bg-red-600 text-white shadow-sm hover:bg-red-700"
+                              onClick={() => void handleToggleAudio(index)}
+                              aria-label={
+                                playingRowIndex === index
+                                  ? "Tam dung audio"
+                                  : "Phat audio"
+                              }
+                              title={
+                                playingRowIndex === index
+                                  ? "Tam dung audio"
+                                  : "Phat audio"
+                              }
+                            >
+                              {playingRowIndex === index ? (
+                                <Pause className="size-3.5" />
+                              ) : (
+                                <Play className="size-3.5" />
+                              )}
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                      ) : null}
+                      <TableCell className="max-w-[20rem] pl-2 font-medium">
+                        <div className="truncate" title={item.name || "-"}>
+                          {item.name || "-"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {item.citizen_identification || "-"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {item.phone_number || "-"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant="outline"
+                          className={`mx-auto border ${scoreMeta.badgeClassName}`}
+                        >
+                          {typeof item.score === "number"
+                            ? item.score.toFixed(4)
+                            : "-"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </>

@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { VoiceTop5MatchTable } from "./voice-top5-match-table";
+import { getVoiceScoreMeta } from "../utils/voice-score";
 import type {
   VoiceIdentifyItem,
   VoiceIdentifyTwoItem,
@@ -39,8 +40,8 @@ function isUnknownSpeaker(item: VoiceIdentifyTwoItem) {
     message.includes("no matching") ||
     message.includes("unknown") ||
     message.includes("not found") ||
-    message.includes("chưa tìm thấy") ||
-    message.includes("không tìm thấy")
+    message.includes("chua tim thay") ||
+    message.includes("khong tim thay")
   );
 }
 
@@ -53,7 +54,9 @@ export function VoiceSpeakerResultCard({
 }: VoiceSpeakerResultCardProps) {
   const [isTimestampOpen, setIsTimestampOpen] = useState(true);
   const isUnknown = isUnknownSpeaker(item);
+  const isAiIdentity = !isUnknown && item.truth_source === "AI";
   const top5Items: VoiceIdentifyItem[] = isUnknown ? [] : [item];
+  const scoreMeta = getVoiceScoreMeta(item.score);
 
   return (
     <Card className="rounded-2xl">
@@ -62,7 +65,7 @@ export function VoiceSpeakerResultCard({
         <CardDescription>
           {!isUnknown && item.citizen_identification
             ? `CCCD: ${item.citizen_identification}`
-            : item.message || "Không có mô tả kết quả"}
+            : item.message || "Khong co mo ta ket qua"}
         </CardDescription>
       </CardHeader>
 
@@ -70,10 +73,10 @@ export function VoiceSpeakerResultCard({
         <div className="flex flex-wrap gap-2">
           {typeof item.score === "number" ? (
             <Badge
-              variant="secondary"
-              className="px-3 py-1 text-sm font-medium"
+              variant="outline"
+              className={`px-3 py-1 text-sm font-medium ${scoreMeta.badgeClassName}`}
             >
-              Điểm số: {item.score.toFixed(4)}
+              Diem so: {item.score.toFixed(4)}
             </Badge>
           ) : null}
 
@@ -82,6 +85,8 @@ export function VoiceSpeakerResultCard({
               num_speakers: {item.num_speakers}
             </Badge>
           ) : null}
+
+          {isAiIdentity ? <Badge variant="outline">Danh tinh AI</Badge> : null}
         </div>
 
         {item.audio_segment && item.audio_segment.length > 0 ? (
@@ -90,7 +95,7 @@ export function VoiceSpeakerResultCard({
               className="flex w-fit cursor-pointer items-center gap-2 rounded-md transition-opacity hover:opacity-80"
               onClick={() => setIsTimestampOpen(!isTimestampOpen)}
             >
-              <p className="text-sm font-medium">Thời gian xuất hiện</p>
+              <p className="text-sm font-medium">Thoi gian xuat hien</p>
               {isTimestampOpen ? (
                 <ChevronUp className="h-4 w-4 text-muted-foreground" />
               ) : (
@@ -120,16 +125,16 @@ export function VoiceSpeakerResultCard({
 
         {!isUnknown ? (
           <VoiceTop5MatchTable
-            title="Kết quả"
+            title="Ket qua"
             description=""
             items={top5Items}
-            emptyText="Không có dữ liệu phù hợp."
+            emptyText="Khong co du lieu phu hop."
             speakerIndex={speakerIndex}
           />
         ) : (
           <div className="rounded-2xl border border-dashed p-4">
             <p className="text-sm text-muted-foreground">
-              Chưa tìm thấy người phù hợp
+              Chua tim thay nguoi phu hop
             </p>
           </div>
         )}
@@ -138,8 +143,8 @@ export function VoiceSpeakerResultCard({
           <div className="flex flex-wrap items-center gap-3">
             <p className="font-semibold">
               {!isUnknown
-                ? "Kết quả bên trên chưa đúng người?"
-                : "Đăng ký giọng nói cho speaker này"}
+                ? "Ket qua ben tren chua dung nguoi?"
+                : "Dang ky giong noi cho speaker nay"}
             </p>
             <Button
               type="button"
@@ -147,7 +152,7 @@ export function VoiceSpeakerResultCard({
               className="shrink-0 shadow-lg hover:shadow-xl"
               onClick={onRegisterUnknown}
             >
-              Đăng ký giọng nói
+              Dang ky giong noi
             </Button>
           </div>
         </div>

@@ -1,11 +1,12 @@
-import { Badge } from "@/components/ui/badge";
+import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { VoiceIdentifyTwoItem } from "../types/voice.types";
+import type { AudioSegment, VoiceIdentifyTwoItem } from "../types/voice.types";
 import { VoiceUploadForm } from "./voice-upload-form";
 
 interface VoiceEnrollDialogProps {
@@ -22,11 +23,17 @@ function formatSeconds(value: number) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function getLongestSegment(item?: VoiceIdentifyTwoItem | null) {
+function getSegmentDuration(segment: AudioSegment): number {
+  return segment.end - segment.start;
+}
+
+function getLongestSegment(
+  item?: VoiceIdentifyTwoItem | null,
+): AudioSegment | undefined {
   if (!item?.audio_segment?.length) return undefined;
 
   return [...item.audio_segment].sort(
-    (a, b) => b.end - b.start - (a.end - a.start),
+    (a, b) => getSegmentDuration(b) - getSegmentDuration(a),
   )[0];
 }
 
@@ -35,24 +42,51 @@ function getSourceFileKey(file: File | null) {
   return `${file.name}-${file.size}-${file.lastModified}`;
 }
 
-export function VoiceEnrollDialog({
+interface VoiceEnrollDialogContentProps {
+  open: boolean;
+  sourceFile: File | null;
+  speakerItem?: VoiceIdentifyTwoItem | null;
+  onEnrollSuccess?: (data: VoiceIdentifyTwoItem) => void;
+  onOpenChange: (open: boolean) => void;
+}
+
+function VoiceEnrollDialogContent({
   open,
-  onOpenChange,
   sourceFile,
   speakerItem,
   onEnrollSuccess,
-}: VoiceEnrollDialogProps) {
-  const longestSegment = getLongestSegment(speakerItem);
+  onOpenChange,
+}: VoiceEnrollDialogContentProps) {
+  const longestSegment = useMemo(
+    () => getLongestSegment(speakerItem),
+    [speakerItem],
+  );
+
+  const [selectedSegment, setSelectedSegment] = useState<
+    AudioSegment | undefined
+  >(undefined);
+
+  const [playerKey, setPlayerKey] = useState(0);
+
+  // Use longest segment if no user selection
+  const effectiveSegment = selectedSegment ?? longestSegment;
+
+  // Only use file-based key for form, not segment-based (to prevent form reset when changing segment)
   const formKey = [
     speakerItem?.matched_voice_id ?? "new",
     getSourceFileKey(sourceFile),
-    longestSegment?.start ?? "na",
-    longestSegment?.end ?? "na",
   ].join("-");
+
+  const handleSegmentClick = (segment: AudioSegment) => {
+    setSelectedSegment(segment);
+    setPlayerKey((prev) => prev + 1);
+  };
+
+  const segments = speakerItem?.audio_segment ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!w-[96vw] !max-w-[96vw] h-[92vh] overflow-hidden p-0 sm:!max-w-5xl xl:!max-w-6xl">
+      <DialogContent className="w-[96vw]! max-w-[96vw]! h-[92vh] overflow-hidden p-0 sm:max-w-5xl! xl:max-w-6xl!">
         <div className="flex h-full min-h-0 flex-col">
           <DialogHeader className="shrink-0 border-b px-6 py-4 text-left">
             <DialogTitle>Đăng ký giọng nói</DialogTitle>
@@ -69,28 +103,41 @@ export function VoiceEnrollDialog({
                 </div>
               ) : null}
 
-              {speakerItem?.audio_segment?.length ? (
+              {segments.length > 0 ? (
                 <div className="space-y-2 rounded-lg border p-3">
                   <p className="text-sm font-medium">Timestamp speaker</p>
                   <div className="flex flex-wrap gap-2">
-                    {speakerItem.audio_segment.map((segment, index) => (
-                      <Badge
-                        key={`${segment.start}-${segment.end}-${index}`}
-                        variant="secondary"
-                      >
-                        {formatSeconds(segment.start)} -{" "}
-                        {formatSeconds(segment.end)}
-                      </Badge>
-                    ))}
+                    {segments.map((segment, index) => {
+                      const isSelected =
+                        effectiveSegment?.start === segment.start &&
+                        effectiveSegment?.end === segment.end;
+                      return (
+                        <button
+                          key={`${segment.start}-${segment.end}-${index}`}
+                          type="button"
+                          onClick={() => handleSegmentClick(segment)}
+                          className={cn(
+                            "inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            isSelected
+                              ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]/90"
+                              : "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+                          )}
+                        >
+                          {formatSeconds(segment.start)} -{" "}
+                          {formatSeconds(segment.end)}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}
 
               <VoiceUploadForm
                 key={formKey}
+                playerKey={playerKey}
                 initialFile={sourceFile}
-                initialStart={longestSegment?.start}
-                initialEnd={longestSegment?.end}
+                initialStart={effectiveSegment?.start}
+                initialEnd={effectiveSegment?.end}
                 compact
                 onUploadSuccess={(data) => {
                   if (data) {
@@ -108,5 +155,27 @@ export function VoiceEnrollDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function VoiceEnrollDialog({
+  open,
+  onOpenChange,
+  sourceFile,
+  speakerItem,
+  onEnrollSuccess,
+}: VoiceEnrollDialogProps) {
+  // Use key to force VoiceEnrollDialogContent to remount when speaker changes
+  const contentKey = speakerItem?.matched_voice_id ?? "no-speaker";
+
+  return (
+    <VoiceEnrollDialogContent
+      key={contentKey}
+      open={open}
+      sourceFile={sourceFile}
+      speakerItem={speakerItem}
+      onEnrollSuccess={onEnrollSuccess}
+      onOpenChange={onOpenChange}
+    />
   );
 }

@@ -89,7 +89,6 @@ export default function VoiceSearchSingle() {
             title="Kết quả phù hợp"
             description="Sắp xếp theo điểm số giảm dần."
             items={items}
-            audioUrl={identifyResult?.audio_url}
             emptyText="Chưa có kết quả nhận diện."
           />
         ) : null}

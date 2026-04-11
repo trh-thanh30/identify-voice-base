@@ -37,6 +37,7 @@ interface VoiceUploadFormProps {
   onUploadSuccess?: (data?: Partial<VoiceIdentifyTwoItem>) => void;
   onFileChange?: () => void;
   compact?: boolean;
+  playerKey?: number;
 }
 
 function getYearOptions() {
@@ -72,6 +73,7 @@ export function VoiceUploadForm({
   onUploadSuccess,
   onFileChange,
   compact = false,
+  playerKey,
 }: VoiceUploadFormProps) {
   const form = useForm<
     UploadVoiceSchemaInput,
@@ -93,8 +95,10 @@ export function VoiceUploadForm({
   });
 
   useEffect(() => {
+    // Only reset form when file changes, not when segment changes
+
     form.reset(getResetValues(initialFile, initialStart, initialEnd));
-  }, [initialFile, initialStart, initialEnd, form]);
+  }, [initialFile, form]);
 
   const uploadMutation = useUploadVoice();
 
@@ -178,6 +182,7 @@ export function VoiceUploadForm({
         />
 
         <VoiceAudioPlayer
+          key={playerKey}
           file={watchedAudioFile ?? null}
           title="Audio đăng ký"
           startAt={initialStart}

@@ -10,6 +10,7 @@ import type {
   UploadVoiceResponse,
   VoiceIdentifyItem,
   VoiceIdentifyTwoItem,
+  VoiceTruthSource,
 } from "../types/voice.types";
 
 type IdentifyMode = "SINGLE" | "MULTI";
@@ -41,6 +42,14 @@ function asNumber(value: unknown): number | undefined {
   return undefined;
 }
 
+function asTruthSource(value: unknown): VoiceTruthSource | undefined {
+  if (value === "BUSINESS" || value === "AI" || value === "NONE") {
+    return value;
+  }
+
+  return undefined;
+}
+
 function normalizeCriminalRecord(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
@@ -50,6 +59,29 @@ function extractAudioUrl(payload: unknown): string | undefined {
 
   const value = asString(payload.audio_url, "");
   return value || undefined;
+}
+
+function extractIdentifyMetadata(payload: unknown): {
+  session_id?: string;
+  identified_at?: string;
+  type?: IdentifyMode;
+} {
+  if (!isRecord(payload)) {
+    return {};
+  }
+
+  const sessionId = asString(payload.session_id, "");
+  const identifiedAt = asString(payload.identified_at, "");
+  const type =
+    payload.type === "SINGLE" || payload.type === "MULTI"
+      ? payload.type
+      : undefined;
+
+  return {
+    session_id: sessionId || undefined,
+    identified_at: identifiedAt || undefined,
+    type,
+  };
 }
 
 function appendIfPresent(formData: FormData, key: string, value: string) {
@@ -88,6 +120,22 @@ function normalizeSegments(
   });
 }
 
+function resolveTruthSource(params: {
+  matchedVoiceId?: string;
+  enrollAudioUrl?: string;
+  truthSource?: VoiceTruthSource;
+}): VoiceTruthSource | undefined {
+  if (params.truthSource) {
+    return params.truthSource;
+  }
+
+  if (params.matchedVoiceId && params.enrollAudioUrl) {
+    return "BUSINESS";
+  }
+
+  return params.matchedVoiceId ? undefined : "NONE";
+}
+
 function normalizeIdentifyItem(item: unknown): VoiceIdentifyItem | null {
   if (!isRecord(item)) return null;
 
@@ -98,14 +146,36 @@ function normalizeIdentifyItem(item: unknown): VoiceIdentifyItem | null {
       : null;
 
   const data = nested ?? item;
+  const matchedVoiceId = asString(
+    data.matched_voice_id,
+    asString(data.voice_id, asString(item.matched_voice_id, "")),
+  );
+  const voiceId = asString(data.voice_id, asString(item.voice_id, ""));
+  const speakerLabel = asString(
+    data.speaker_label,
+    asString(
+      item.speaker_label,
+      asString(data.label, asString(item.label, "")),
+    ),
+  );
+  const audioUrl = asString(data.audio_url, asString(item.audio_url, ""));
+  const enrollAudioUrl = asString(
+    data.enroll_audio_url,
+    asString(item.enroll_audio_url, ""),
+  );
+  const truthSource = resolveTruthSource({
+    matchedVoiceId: matchedVoiceId || undefined,
+    enrollAudioUrl: enrollAudioUrl || undefined,
+    truthSource: asTruthSource(
+      data.truth_source ?? item.truth_source ?? data.source ?? item.source,
+    ),
+  });
 
   return {
+    speaker_label: speakerLabel || undefined,
     message: asString(data.message, asString(item.message, "")),
-    matched_voice_id: asString(
-      data.matched_voice_id,
-      asString(data.voice_id, asString(item.matched_voice_id, "")),
-    ),
-    voice_id: asString(data.voice_id, asString(item.voice_id, "")),
+    matched_voice_id: matchedVoiceId || undefined,
+    voice_id: voiceId || undefined,
     score: asNumber(data.score),
     name: asString(data.name, asString(item.name, "")),
     citizen_identification: asString(
@@ -119,6 +189,9 @@ function normalizeIdentifyItem(item: unknown): VoiceIdentifyItem | null {
     criminal_record: normalizeCriminalRecord(
       data.criminal_record ?? item.criminal_record,
     ),
+    audio_url: audioUrl || undefined,
+    enroll_audio_url: enrollAudioUrl || undefined,
+    truth_source: truthSource,
   };
 }
 
@@ -130,7 +203,7 @@ function normalizeIdentifyTwoItem(item: unknown): VoiceIdentifyTwoItem | null {
 
   return {
     ...base,
-    audio_path: asString(item.audio_path, ""),
+    audio_path: asString(item.audio_path, base.audio_url ?? "") || undefined,
     num_speakers: asNumber(item.num_speakers),
     audio_segment: normalizeSegments(item.audio_segment ?? item.segments),
   };
@@ -199,6 +272,15 @@ export const voiceApi = {
     return {
       message: message || "Upload voice thanh cong.",
       voice_id: isRecord(data) ? asString(data.voice_id, "") : "",
+      user_id: isRecord(data)
+        ? asString(data.user_id, "") || undefined
+        : undefined,
+      audio_url: isRecord(data)
+        ? asString(data.audio_url, "") || undefined
+        : undefined,
+      enrolled_at: isRecord(data)
+        ? asString(data.enrolled_at, "") || undefined
+        : undefined,
       raw: response.data,
     };
   },
@@ -214,6 +296,7 @@ export const voiceApi = {
 
     const { data } = unwrapApiResponse(response.data);
     const audioUrl = extractAudioUrl(data);
+    const metadata = extractIdentifyMetadata(data);
 
     const items = extractSpeakerItems(data)
       .map(normalizeIdentifyItem)
@@ -223,7 +306,10 @@ export const voiceApi = {
 
     return {
       items,
+      session_id: metadata.session_id,
       audio_url: audioUrl,
+      identified_at: metadata.identified_at,
+      type: metadata.type,
       raw: response.data,
     };
   },
@@ -239,6 +325,7 @@ export const voiceApi = {
 
     const { data } = unwrapApiResponse(response.data);
     const audioUrl = extractAudioUrl(data);
+    const metadata = extractIdentifyMetadata(data);
 
     const items = extractSpeakerItems(data)
       .map(normalizeIdentifyTwoItem)
@@ -246,7 +333,10 @@ export const voiceApi = {
 
     return {
       items,
+      session_id: metadata.session_id,
       audio_url: audioUrl,
+      identified_at: metadata.identified_at,
+      type: metadata.type,
       raw: response.data,
     };
   },

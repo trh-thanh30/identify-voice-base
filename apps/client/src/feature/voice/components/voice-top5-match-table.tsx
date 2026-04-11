@@ -134,10 +134,12 @@ export function VoiceTop5MatchTable({
                       Audio
                     </TableHead>
                   ) : null}
-                  <TableHead className="w-[20rem] pl-2">Ho va ten</TableHead>
+                  <TableHead className="w-[20rem] pl-2">Họ và tên</TableHead>
                   <TableHead className="w-40 text-center">CCCD</TableHead>
-                  <TableHead className="w-32 text-center">Dien thoai</TableHead>
-                  <TableHead className="w-40 text-center">Diem so</TableHead>
+                  <TableHead className="w-32 text-center">
+                    Số điện thoại
+                  </TableHead>
+                  <TableHead className="w-40 text-center">Điểm số</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

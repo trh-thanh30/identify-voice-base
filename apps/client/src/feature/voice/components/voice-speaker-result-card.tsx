@@ -65,7 +65,7 @@ export function VoiceSpeakerResultCard({
         <CardDescription>
           {!isUnknown && item.citizen_identification
             ? `CCCD: ${item.citizen_identification}`
-            : item.message || "Khong co mo ta ket qua"}
+            : item.message || "Chưa có thông tin CCCD"}
         </CardDescription>
       </CardHeader>
 
@@ -76,7 +76,7 @@ export function VoiceSpeakerResultCard({
               variant="outline"
               className={`px-3 py-1 text-sm font-medium ${scoreMeta.badgeClassName}`}
             >
-              Diem so: {item.score.toFixed(4)}
+              {item.score.toFixed(4)}
             </Badge>
           ) : null}
 
@@ -95,7 +95,7 @@ export function VoiceSpeakerResultCard({
               className="flex w-fit cursor-pointer items-center gap-2 rounded-md transition-opacity hover:opacity-80"
               onClick={() => setIsTimestampOpen(!isTimestampOpen)}
             >
-              <p className="text-sm font-medium">Thoi gian xuat hien</p>
+              <p className="text-sm font-medium">Thời gian xuất hiện</p>
               {isTimestampOpen ? (
                 <ChevronUp className="h-4 w-4 text-muted-foreground" />
               ) : (
@@ -128,7 +128,7 @@ export function VoiceSpeakerResultCard({
             title="Ket qua"
             description=""
             items={top5Items}
-            emptyText="Khong co du lieu phu hop."
+            emptyText="Không có dữ liệu phù hợp"
             speakerIndex={speakerIndex}
           />
         ) : (
@@ -143,8 +143,8 @@ export function VoiceSpeakerResultCard({
           <div className="flex flex-wrap items-center gap-3">
             <p className="font-semibold">
               {!isUnknown
-                ? "Ket qua ben tren chua dung nguoi?"
-                : "Dang ky giong noi cho speaker nay"}
+                ? "Kết quả trên chưa đúng người?"
+                : "Đăng ký giọng nói cho speaker này"}
             </p>
             <Button
               type="button"
@@ -152,7 +152,7 @@ export function VoiceSpeakerResultCard({
               className="shrink-0 shadow-lg hover:shadow-xl"
               onClick={onRegisterUnknown}
             >
-              Dang ky giong noi
+              Đăng ký giọng nói
             </Button>
           </div>
         </div>

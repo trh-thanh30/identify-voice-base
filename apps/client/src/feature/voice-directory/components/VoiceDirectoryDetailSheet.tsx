@@ -436,7 +436,7 @@ export function VoiceDirectoryDetailSheet({
                           key={field.id}
                           className="flex flex-wrap items-end gap-2"
                         >
-                          <div className="min-w-[140px] flex-1 space-y-1">
+                          <div className="min-w-35 flex-1 space-y-1">
                             <Label className="text-xs">Vụ việc</Label>
                             <Input
                               {...form.register(
@@ -512,7 +512,7 @@ export function VoiceDirectoryDetailSheet({
                         <TableHead className="w-10" />
                         <TableHead>Thời điểm</TableHead>
                         <TableHead>Điểm</TableHead>
-                        <TableHead className="w-[120px]">Phiên</TableHead>
+                        <TableHead className="w-30">Phiên</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

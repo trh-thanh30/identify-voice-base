@@ -81,10 +81,29 @@ axiosInstance.interceptors.request.use(
   (error: unknown) => Promise.reject(error),
 );
 
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value: string | null) => void;
+  reject: (error: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};
+
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => response,
-  (error: unknown) => {
+  async (error: unknown) => {
     if (axios.isAxiosError(error)) {
+      const originalRequest = error.config;
       const status = error.response?.status;
       const payload = getApiErrorPayload(error.response?.data);
 
@@ -97,8 +116,55 @@ axiosInstance.interceptors.response.use(
         errors: payload.errors,
       };
 
-      if (status === 401 && !isPublicAuthRequest(error.config?.url)) {
-        expireClientSession("unauthorized");
+      // Handle 401 Unauthorized errors
+      if (
+        status === 401 &&
+        originalRequest &&
+        !isPublicAuthRequest(originalRequest.url) &&
+        // @ts-expect-error - _retry is a custom property
+        !originalRequest._retry
+      ) {
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then((token) => {
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
+              return axiosInstance(originalRequest);
+            })
+            .catch((err) => {
+              return Promise.reject(err);
+            });
+        }
+
+        // @ts-expect-error - _retry is a custom property
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+          // Import dynamic to avoid circular dependency if possible,
+          // though auth.api.ts already imports axiosInstance.
+          // Since it's a POST call, it should be fine.
+          const { refreshTokenApi } = await import("./auth.api");
+          const res = await refreshTokenApi();
+          const newToken = res.data.access_token;
+
+          useAuthStore.getState().setAccessToken(newToken);
+          processQueue(null, newToken);
+
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          }
+          return axiosInstance(originalRequest);
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+          expireClientSession("unauthorized");
+          return Promise.reject(apiError);
+        } finally {
+          isRefreshing = false;
+        }
       }
 
       return Promise.reject(apiError);

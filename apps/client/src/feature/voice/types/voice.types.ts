@@ -48,7 +48,10 @@ export interface IdentifyTwoVoiceRequest {
   file: File;
 }
 
+export type VoiceTruthSource = "BUSINESS" | "AI" | "NONE";
+
 export interface VoiceIdentifyItem {
+  speaker_label?: string;
   message: string;
   matched_voice_id?: string;
   voice_id?: string; // Fallback or from registration
@@ -60,6 +63,9 @@ export interface VoiceIdentifyItem {
   job?: string;
   passport?: string;
   criminal_record?: CriminalRecordItem[] | unknown[];
+  audio_url?: string;
+  enroll_audio_url?: string;
+  truth_source?: VoiceTruthSource;
 }
 
 export interface VoiceIdentifyTwoItem extends VoiceIdentifyItem {
@@ -71,16 +77,27 @@ export interface VoiceIdentifyTwoItem extends VoiceIdentifyItem {
 export interface UploadVoiceResponse {
   message: string;
   voice_id?: string;
+  user_id?: string;
+  audio_url?: string;
+  enrolled_at?: string;
   raw: unknown;
 }
 
 export interface IdentifyVoiceResponse {
   items: VoiceIdentifyItem[];
+  session_id?: string;
+  audio_url?: string;
+  identified_at?: string;
+  type?: "SINGLE" | "MULTI";
   raw: unknown;
 }
 
 export interface IdentifyTwoVoiceResponse {
   items: VoiceIdentifyTwoItem[];
+  session_id?: string;
+  audio_url?: string;
+  identified_at?: string;
+  type?: "SINGLE" | "MULTI";
   raw: unknown;
 }
 

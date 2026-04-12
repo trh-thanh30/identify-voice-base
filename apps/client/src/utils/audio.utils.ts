@@ -1,4 +1,12 @@
-import toWav from 'audiobuffer-to-wav';
+import toWav from "audiobuffer-to-wav";
+
+function createAudioContext() {
+  return new (
+    window.AudioContext ||
+    (window as typeof window & { webkitAudioContext: typeof AudioContext })
+      .webkitAudioContext
+  )();
+}
 
 /**
  * Slices an AudioBuffer from startTime to endTime.
@@ -7,20 +15,26 @@ export function sliceAudioBuffer(
   audioBuffer: AudioBuffer,
   startTime: number,
   endTime: number,
-  audioContext: AudioContext
+  audioContext: AudioContext,
 ): AudioBuffer {
-  const startOffset = Math.max(0, Math.floor(startTime * audioBuffer.sampleRate));
-  const endOffset = Math.min(audioBuffer.length, Math.floor(endTime * audioBuffer.sampleRate));
+  const startOffset = Math.max(
+    0,
+    Math.floor(startTime * audioBuffer.sampleRate),
+  );
+  const endOffset = Math.min(
+    audioBuffer.length,
+    Math.floor(endTime * audioBuffer.sampleRate),
+  );
   const frameCount = endOffset - startOffset;
 
   if (frameCount <= 0) {
-    throw new Error('Invalid time range for audio slicing.');
+    throw new Error("Invalid time range for audio slicing.");
   }
 
   const newBuffer = audioContext.createBuffer(
     audioBuffer.numberOfChannels,
     frameCount,
-    audioBuffer.sampleRate
+    audioBuffer.sampleRate,
   );
 
   for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
@@ -35,20 +49,57 @@ export function sliceAudioBuffer(
 /**
  * Crops an audio file on the client side.
  */
-export async function cropAudioFile(file: File, start: number, end: number): Promise<File> {
-  const audioContext = new (
-    window.AudioContext ||
-    (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-  )();
-  const arrayBuffer = await file.arrayBuffer();
-  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+export async function cropAudioFile(
+  file: File,
+  start: number,
+  end: number,
+): Promise<File> {
+  const audioContext = createAudioContext();
 
-  const slicedBuffer = sliceAudioBuffer(audioBuffer, start, end, audioContext);
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-  // Use the audiobuffer-to-wav library instead of manual encoding
-  const wavArrayBuffer = toWav(slicedBuffer);
-  const wavBlob = new Blob([wavArrayBuffer], { type: 'audio/wav' });
+    const slicedBuffer = sliceAudioBuffer(
+      audioBuffer,
+      start,
+      end,
+      audioContext,
+    );
 
-  const newFileName = `cropped_${start}-${end}_${file.name.replace(/\.[^/.]+$/, '')}.wav`;
-  return new File([wavBlob], newFileName, { type: 'audio/wav' });
+    // Use the audiobuffer-to-wav library instead of manual encoding
+    const wavArrayBuffer = toWav(slicedBuffer);
+    const wavBlob = new Blob([wavArrayBuffer], { type: "audio/wav" });
+
+    const newFileName = `cropped_${start}-${end}_${file.name.replace(/\.[^/.]+$/, "")}.wav`;
+    return new File([wavBlob], newFileName, { type: "audio/wav" });
+  } finally {
+    await audioContext.close().catch(() => undefined);
+  }
+}
+
+/**
+ * Converts a browser-recorded audio file into WAV so backend duration parsing
+ * and in-browser playback don't depend on container metadata from MediaRecorder.
+ */
+export async function convertAudioFileToWav(
+  file: File,
+  outputBaseName?: string,
+): Promise<File> {
+  const audioContext = createAudioContext();
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    const wavArrayBuffer = toWav(audioBuffer);
+    const wavBlob = new Blob([wavArrayBuffer], { type: "audio/wav" });
+    const baseName = outputBaseName || file.name.replace(/\.[^/.]+$/, "");
+
+    return new File([wavBlob], `${baseName}.wav`, {
+      type: "audio/wav",
+      lastModified: Date.now(),
+    });
+  } finally {
+    await audioContext.close().catch(() => undefined);
+  }
 }

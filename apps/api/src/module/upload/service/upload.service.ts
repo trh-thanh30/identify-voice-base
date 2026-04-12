@@ -126,7 +126,12 @@ export class UploadService {
     const destDir = PURPOSE_DIR[purpose];
     const fileName = `${fileId}.${ext}`;
 
-    const durationSec = await this._getDuration(file.buffer, purpose);
+    const durationSec = await this._getDuration(
+      file.buffer,
+      purpose,
+      file.mimetype,
+      file.size,
+    );
 
     const fileStream = Readable.from(file.buffer);
     const { storageKey } = await this.storage
@@ -171,11 +176,16 @@ export class UploadService {
   private async _getDuration(
     buffer: Buffer,
     purpose: AudioPurpose,
+    mimeType?: string,
+    size?: number,
   ): Promise<number> {
     let durationSec: number;
 
     try {
-      const metadata = await mm.parseBuffer(buffer);
+      const metadata = await mm.parseBuffer(buffer, {
+        mimeType,
+        size,
+      });
       durationSec = metadata.format.duration ?? 0;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

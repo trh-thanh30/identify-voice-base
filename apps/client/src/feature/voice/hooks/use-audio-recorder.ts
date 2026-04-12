@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { convertAudioFileToWav } from "@/utils/audio.utils";
 
 interface UseAudioRecorderReturn {
   isRecording: boolean;
@@ -46,9 +47,9 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       streamRef.current = stream;
 
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : 'audio/webm',
+        mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : "audio/webm",
       });
       mediaRecorderRef.current = mediaRecorder;
 
@@ -59,16 +60,33 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const file = new File([blob], `recording-${timestamp}.webm`, {
-          type: 'audio/webm',
-        });
+        void (async () => {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+          const sourceMimeType = mediaRecorder.mimeType || "audio/webm";
+          const blob = new Blob(chunksRef.current, { type: sourceMimeType });
+          const sourceFile = new File([blob], `recording-${timestamp}.webm`, {
+            type: sourceMimeType,
+          });
 
-        if (resolveStopRef.current) {
-          resolveStopRef.current(file);
-          resolveStopRef.current = null;
-        }
+          let outputFile: File = sourceFile;
+
+          try {
+            outputFile = await convertAudioFileToWav(
+              sourceFile,
+              `recording-${timestamp}`,
+            );
+          } catch (error) {
+            console.error("Failed to convert recorded audio to wav:", error);
+          }
+
+          if (resolveStopRef.current) {
+            resolveStopRef.current(outputFile);
+            resolveStopRef.current = null;
+          }
+
+          chunksRef.current = [];
+          mediaRecorderRef.current = null;
+        })();
       };
 
       mediaRecorder.start(100);
@@ -78,7 +96,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
         setDuration((prev) => prev + 1);
       }, 1000);
     } catch (error) {
-      console.error('Failed to start recording:', error);
+      console.error("Failed to start recording:", error);
       cleanup();
       throw error;
     }
@@ -86,7 +104,10 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
 
   const stopRecording = useCallback((): Promise<File | null> => {
     return new Promise((resolve) => {
-      if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+      if (
+        !mediaRecorderRef.current ||
+        mediaRecorderRef.current.state === "inactive"
+      ) {
         resolve(null);
         return;
       }

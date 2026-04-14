@@ -135,7 +135,7 @@ export default function VoiceSessionHistory() {
 
   return (
     <PageLayout
-      title="Lịch sử nhận dạng"
+      title="Lịch sử định danh"
       description="Theo dõi các phiên nhận dạng, lọc theo thời gian và kiểm tra chi tiết từng speaker."
       onRefresh={async () => {
         await sessionsQuery.refetch();

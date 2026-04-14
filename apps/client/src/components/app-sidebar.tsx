@@ -93,7 +93,7 @@ const navigation: NavItem[] = [
         icon: BookUser,
       },
       {
-        title: "Lịch sử định dạng",
+        title: "Lịch sử định danh",
         url: ROUTES.VOICE_HISTORY,
         icon: History,
       },

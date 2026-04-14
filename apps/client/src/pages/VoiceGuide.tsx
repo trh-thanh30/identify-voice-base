@@ -1,18 +1,14 @@
 import { Mic, ShieldAlert } from "lucide-react";
+import { PageLayout } from "@/components/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function VoiceGuide() {
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-2">
-        <h1 className="font-playfair text-2xl font-bold text-[#4b1d18] md:text-3xl">
-          Hướng dẫn sử dụng
-        </h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Hướng dẫn sử dụng hệ thống nhận diện giọng nói
-        </p>
-      </header>
-
+    <PageLayout
+      title="Hướng dẫn sử dụng"
+      description="Hướng dẫn sử dụng hệ thống nhận diện giọng nói"
+      titleClassName="font-playfair text-[34px] leading-[1.1] font-bold tracking-tight text-[#4b1d18] md:text-[42px]"
+    >
       <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         <Card className="rounded-2xl">
           <CardHeader>
@@ -64,6 +60,6 @@ export default function VoiceGuide() {
           </CardContent>
         </Card>
       </section>
-    </div>
+    </PageLayout>
   );
 }

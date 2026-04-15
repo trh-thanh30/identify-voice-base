@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Languages, UsersRound } from "lucide-react";
+import { BookUser, Languages, UsersRound } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROUTES } from "@/constants";
 import micWave from "@/assets/micwave.png";
@@ -14,6 +14,11 @@ const quickActions = [
     title: "DỊCH ĐA NGÔN NGỮ",
     to: ROUTES.TRANSLATE,
     icon: Languages,
+  },
+  {
+    title: "HỒ SƠ ĐỊNH DANH",
+    to: ROUTES.VOICE_DIRECTORY,
+    icon: BookUser,
   },
 ];
 
@@ -30,7 +35,7 @@ export default function Home() {
             />
           </div>
 
-          <div className="min-w-0 flex items-center h-full">
+          <div className="min-w-0 flex h-full items-center">
             <h1 className="font-playfair line-clamp-3 text-[30px] font-bold leading-[1.2] text-[#4b1d18] md:text-[36px] lg:text-[40px] xl:text-[46px] 2xl:text-[52px]">
               Hệ thống nhận diện đối tượng dựa trên đặc điểm sinh trắc giọng nói
               và dịch đa ngôn ngữ
@@ -39,7 +44,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="grid flex-4 gap-6 sm:grid-cols-2">
+      <section className="grid flex-4 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {quickActions.map((item) => {
           const Icon = item.icon;
 

@@ -1,7 +1,13 @@
-import { useRef } from "react";
-import { Upload, FileAudio, X, Mic, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { truncText } from "@/utils/trunc-text";
+import { FileAudio, Mic, Square, Upload, X } from "lucide-react";
+import { useRef } from "react";
 import { useAudioRecorder } from "../hooks/use-audio-recorder";
 
 interface VoiceAudioDropzoneProps {
@@ -154,7 +160,15 @@ export function VoiceAudioDropzone({
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{value.name}</p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="truncate text-sm font-semibold">
+                    {truncText(value.name, { maxLength: 60, breakWord: true })}
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent>{value.name}</TooltipContent>
+              </Tooltip>
+
               <p className="text-sm text-muted-foreground">
                 {(value.size / 1024 / 1024).toFixed(2)} MB
               </p>

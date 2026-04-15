@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -98,7 +98,9 @@ export default function Login() {
           <div className="mx-auto h-px w-32 bg-linear-to-r from-transparent via-[#fad29e]/40 to-transparent" />
 
           <div className="flex items-center gap-3 text-white/70">
-            <p className="text-base font-light">Hệ thống nhận diện giọng nói</p>
+            <p className="text-base font-light">
+              Hệ thống nhận diện giọng nói và dịch đa ngôn ngữ
+            </p>
           </div>
         </div>
       </div>
@@ -200,7 +202,7 @@ export default function Login() {
           </form>
 
           {/* Register link */}
-          <p className="mt-8 text-center text-sm text-[#6b7280]">
+          {/* <p className="mt-8 text-center text-sm text-[#6b7280]">
             Chưa có tài khoản?{" "}
             <Link
               to={ROUTES.REGISTER}
@@ -208,7 +210,7 @@ export default function Login() {
             >
               Đăng ký ngay
             </Link>
-          </p>
+          </p> */}
         </div>
       </div>
     </div>

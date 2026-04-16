@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { truncText } from "@/utils/trunc-text";
 import { useMemo } from "react";
 import type { UploadVoiceSchemaInput } from "../schemas/voice.schema";
+import type { CriminalRecordItem } from "../types/voice.types";
 import type { VoiceIdentifyTwoItem } from "../types/voice.types";
 import { VoiceUploadForm } from "./voice-upload-form";
 
@@ -36,6 +37,17 @@ function getPreviewAudioUrl(
   return item?.audio_url?.trim() || undefined;
 }
 
+function isCriminalRecordItem(value: unknown): value is CriminalRecordItem {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "case" in value &&
+    "year" in value &&
+    typeof value.case === "string" &&
+    typeof value.year === "number"
+  );
+}
+
 function getInitialFormValues(
   item?: VoiceIdentifyTwoItem | null,
 ): Partial<UploadVoiceSchemaInput> {
@@ -47,25 +59,13 @@ function getInitialFormValues(
     job: item?.job?.trim() ?? "",
     passport: item?.passport?.trim() ?? "",
     criminalRecords: Array.isArray(item?.criminal_record)
-      ? item.criminal_record
-          .filter(
-            (
-              record,
-            ): record is {
-              case: string;
-              year: number;
-            } =>
-              typeof record === "object" &&
-              record !== null &&
-              "case" in record &&
-              "year" in record &&
-              typeof record.case === "string" &&
-              typeof record.year === "number",
-          )
-          .map((record) => ({
-            case: record.case,
-            year: String(record.year),
-          }))
+      ? item.criminal_record.filter(isCriminalRecordItem).map((record) => {
+          const criminalRecord = record as CriminalRecordItem;
+          return {
+            case: criminalRecord.case,
+            year: String(criminalRecord.year),
+          };
+        })
       : [],
   };
 }

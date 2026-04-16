@@ -4,10 +4,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ACCEPTED_AUDIO_TYPES, MAX_AUDIO_FILE_SIZE_BYTES } from "@/constants";
 import { cn } from "@/lib/utils";
 import { truncText } from "@/utils/trunc-text";
 import { FileAudio, Mic, Square, Upload, X } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useAudioRecorder } from "../hooks/use-audio-recorder";
 
 interface VoiceAudioDropzoneProps {

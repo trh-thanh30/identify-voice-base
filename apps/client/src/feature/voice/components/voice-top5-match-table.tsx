@@ -72,7 +72,7 @@ function HeaderTooltip({
     <Tooltip>
       <TooltipTrigger asChild>
         <span
-          className={`inline-flex cursor-help items-center justify-center underline decoration-dotted underline-offset-4 ${className ?? ""}`}
+          className={`inline-block max-w-full cursor-help text-center leading-snug underline decoration-dotted underline-offset-4 ${className ?? ""}`}
         >
           {label}
         </span>
@@ -132,40 +132,40 @@ export function VoiceTop5MatchTable({
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12 px-1 text-center">
+                  <TableHead className="w-[8%] px-1 text-center whitespace-normal">
                     <HeaderTooltip
                       label="STT"
                       description="Thứ tự kết quả khớp trong bảng."
                     />
                   </TableHead>
                   {shouldShowAudioColumn ? (
-                    <TableHead className="w-16 px-1 text-center">
+                    <TableHead className="w-[10%] px-1 text-center whitespace-normal">
                       <HeaderTooltip
                         label="Audio"
                         description="Mở hộp thoại để phát audio của người nói này."
                       />
                     </TableHead>
                   ) : null}
-                  <TableHead className="w-20 pl-2">
+                  <TableHead className="w-[24%] pl-2 whitespace-normal">
                     <HeaderTooltip
                       label="Họ và tên"
                       description="Tên hồ sơ hoặc danh tính AI được ánh xạ với kết quả khớp."
-                      className="justify-start"
+                      className="text-left"
                     />
                   </TableHead>
-                  <TableHead className="w-40 text-center">
+                  <TableHead className="w-[20%] text-center whitespace-normal">
                     <HeaderTooltip
                       label="CCCD"
                       description="Số căn cước công dân hoặc mã định danh của hồ sơ."
                     />
                   </TableHead>
-                  <TableHead className="w-32 text-center">
+                  <TableHead className="w-[20%] text-center whitespace-normal">
                     <HeaderTooltip
                       label="Số điện thoại"
                       description="Thông tin liên hệ lưu trong hồ sơ nhận dạng."
                     />
                   </TableHead>
-                  <TableHead className="w-40 text-center">
+                  <TableHead className="w-[18%] text-center whitespace-normal">
                     <HeaderTooltip
                       label="Điểm số"
                       description="Độ tương đồng giữa audio đầu vào và hồ sơ giọng nói đã lưu."
@@ -185,11 +185,11 @@ export function VoiceTop5MatchTable({
                         item.matched_voice_id || item.name || "unknown"
                       }-${index}`}
                     >
-                      <TableCell className="w-12 px-1 text-center">
+                      <TableCell className="w-[8%] px-1 text-center">
                         {index + 1}
                       </TableCell>
                       {shouldShowAudioColumn ? (
-                        <TableCell className="w-16 px-1 text-center">
+                        <TableCell className="w-[10%] px-1 text-center">
                           {rowAudioUrl ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -218,25 +218,25 @@ export function VoiceTop5MatchTable({
                           )}
                         </TableCell>
                       ) : null}
-                      <TableCell className="max-w-20 pl-2 font-medium">
+                      <TableCell className="w-[24%] min-w-0 pl-2 font-medium">
                         <TextCellTooltip
                           value={item.name}
                           className="truncate"
                         />
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="w-[20%] text-center">
                         <TextCellTooltip
                           value={item.citizen_identification}
                           className="truncate text-center"
                         />
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="w-[20%] text-center">
                         <TextCellTooltip
                           value={item.phone_number}
                           className="truncate text-center"
                         />
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="w-[18%] text-center">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Badge

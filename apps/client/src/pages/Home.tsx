@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Languages, UsersRound } from "lucide-react";
+import { BookUser, Languages, UsersRound } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROUTES } from "@/constants";
 import micWave from "@/assets/micwave.png";
@@ -14,6 +14,11 @@ const quickActions = [
     title: "DỊCH ĐA NGÔN NGỮ",
     to: ROUTES.TRANSLATE,
     icon: Languages,
+  },
+  {
+    title: "HỒ SƠ ĐỊNH DANH",
+    to: ROUTES.VOICE_DIRECTORY,
+    icon: BookUser,
   },
 ];
 
@@ -30,7 +35,7 @@ export default function Home() {
             />
           </div>
 
-          <div className="min-w-0 flex items-center h-full">
+          <div className="min-w-0 flex h-full items-center">
             <h1 className="font-playfair line-clamp-3 text-[30px] font-bold leading-[1.2] text-[#4b1d18] md:text-[36px] lg:text-[40px] xl:text-[46px] 2xl:text-[52px]">
               Hệ thống nhận diện đối tượng dựa trên đặc điểm sinh trắc giọng nói
               và dịch đa ngôn ngữ
@@ -39,13 +44,13 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="grid flex-4 gap-6 sm:grid-cols-2">
+      <section className="grid flex-4 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {quickActions.map((item) => {
           const Icon = item.icon;
 
           return (
             <Link key={item.title} to={item.to} className="block h-full">
-              <Card className="h-full rounded-[24px] border-0 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_12px_32px_rgba(15,23,42,0.12)]">
+              <Card className="h-full rounded-[32px] border-0 ring-0 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_12px_36px_rgba(15,23,42,0.12)]">
                 <CardContent className="flex h-full flex-col items-center justify-center gap-6 px-6 py-8 text-center">
                   <div className="flex items-center justify-center rounded-full text-[#4b140c]">
                     <Icon className="size-16 stroke-[1.8] md:size-20 lg:size-24" />

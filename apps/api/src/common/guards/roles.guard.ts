@@ -1,7 +1,7 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { ForbiddenError } from '@/common/response';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -28,7 +28,9 @@ export class RolesGuard implements CanActivate {
     const hasRole = requiredRoles.some((role) => user.role === role);
 
     if (!hasRole) {
-      throw new ForbiddenError(`Access denied.`);
+      throw new ForbiddenError(
+        `Bạn không có quyền thực hiện chức năng trên. Vui lòng liên hệ admin để được hỗ trợ!`,
+      );
     }
 
     return true;

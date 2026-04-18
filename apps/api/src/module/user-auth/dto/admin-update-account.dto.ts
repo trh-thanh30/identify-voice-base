@@ -1,5 +1,5 @@
 import { ALL_PERMISSIONS, type AppPermission } from '@/common/auth/permissions';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Role, UserStatus } from '@prisma/client';
 import {
   ArrayUnique,
@@ -11,27 +11,29 @@ import {
   MinLength,
 } from 'class-validator';
 
-export class CreateAccountDto {
-  @ApiProperty({ example: 'operator@example.com' })
+export class AdminUpdateAccountDto {
+  @ApiPropertyOptional({ example: 'operator@example.com' })
+  @IsOptional()
   @IsEmail({}, { message: 'Email không hợp lệ' })
-  email: string;
+  email?: string;
 
   @ApiPropertyOptional({ example: 'operator01' })
   @IsOptional()
   @IsString({ message: 'Tên đăng nhập phải là chuỗi' })
   username?: string;
 
-  @ApiProperty({ example: 'password123' })
+  @ApiPropertyOptional({ example: 'newPassword123' })
+  @IsOptional()
   @IsString({ message: 'Mật khẩu phải là chuỗi' })
   @MinLength(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự' })
-  password: string;
+  password?: string;
 
-  @ApiPropertyOptional({ enum: Role, default: Role.OPERATOR })
+  @ApiPropertyOptional({ enum: Role })
   @IsOptional()
   @IsEnum(Role, { message: 'Role không hợp lệ' })
   role?: Role;
 
-  @ApiPropertyOptional({ enum: UserStatus, default: UserStatus.ACTIVE })
+  @ApiPropertyOptional({ enum: UserStatus })
   @IsOptional()
   @IsEnum(UserStatus, { message: 'Trạng thái không hợp lệ' })
   status?: UserStatus;
@@ -40,7 +42,7 @@ export class CreateAccountDto {
     isArray: true,
     enum: ALL_PERMISSIONS,
     description:
-      'Danh sách quyền cho operator. Nếu bỏ trống, operator mặc định có full quyền như admin.',
+      'Danh sách quyền mới cho operator. Gửi mảng rỗng để reset về bộ quyền mặc định của operator.',
   })
   @IsOptional()
   @IsArray({ message: 'permissions phải là mảng' })

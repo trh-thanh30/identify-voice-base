@@ -7,17 +7,17 @@ import { BadRequestError } from '@/common/response';
 import { BaseUseCase } from '@/shared/interfaces/base-usecase.interface';
 import { Injectable } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { UpdateAccountDto } from '../dto/update-account.dto';
+import { AdminUpdateAccountDto } from '../dto/admin-update-account.dto';
 import { UsersRepository } from '../repository/users.repository';
 
-interface UpdateAccountInput {
+interface AdminUpdateAccountInput {
   id: string;
-  dto: UpdateAccountDto;
+  dto: AdminUpdateAccountDto;
 }
 
 @Injectable()
-export class UpdateAccountUseCase implements BaseUseCase<
-  UpdateAccountInput,
+export class AdminUpdateAccountUseCase implements BaseUseCase<
+  AdminUpdateAccountInput,
   any
 > {
   constructor(
@@ -25,7 +25,7 @@ export class UpdateAccountUseCase implements BaseUseCase<
     private readonly bcryptService: BcryptService,
   ) {}
 
-  async execute(input: UpdateAccountInput) {
+  async execute(input: AdminUpdateAccountInput) {
     const { id, dto } = input;
     const account = await this.usersRepository.findByIdOrThrow(id);
 

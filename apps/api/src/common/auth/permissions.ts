@@ -1,16 +1,16 @@
 import { AudioPurpose, Role, type auth_accounts } from '@prisma/client';
 
 export const ALL_PERMISSIONS = [
-  'accounts.manage',
-  'profile.read',
-  'profile.update',
-  'profile.delete',
-  'voices.read',
-  'voices.enroll',
-  'voices.update',
-  'voices.delete',
-  'identify.run',
-  'sessions.read',
+  'accounts.manage', // Quản lý tài khoản (tạo, cập nhật role/status/password/permissions)
+  'profile.read', // Đọc thông tin profile cá nhân
+  'profile.update', // Cập nhật thông tin profile cá nhân
+  'profile.delete', // Xóa tài khoản cá nhân
+  'voices.read', // Xem danh sách và chi tiết voiceprints
+  'voices.enroll', // Đăng ký voiceprint mới
+  'voices.update', // Cập nhật voiceprint (ví dụ: enroll thêm mẫu giọng nói)
+  'voices.delete', // Xóa voiceprint
+  'identify.run', // Chạy chức năng nhận diện giọng nói (identify)
+  'sessions.read', // Xem danh sách và chi tiết các phiên đăng nhập
 ] as const;
 
 export type AppPermission = (typeof ALL_PERMISSIONS)[number];
@@ -35,7 +35,7 @@ export function getDefaultPermissionsForRole(role: Role): AppPermission[] {
     return [...ALL_PERMISSIONS];
   }
 
-  return [...ALL_PERMISSIONS];
+  return ['profile.read', 'voices.read', 'voices.enroll'];
 }
 
 export function resolveAccountPermissions(

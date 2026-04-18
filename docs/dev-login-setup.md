@@ -30,6 +30,13 @@ pnpm run dev
   - `SEED_ADMIN_EMAIL`
   - `SEED_ADMIN_USERNAME`
   - `SEED_ADMIN_PASSWORD`
+- Sau khi login bằng admin seed, có thể dùng API admin account management để tạo thêm operator:
+  - `POST /api/v1/users/accounts`
+  - `PATCH /api/v1/users/accounts/:id/account`
+- Operator tạo mới nếu không truyền `permissions` sẽ mặc định có:
+  - `profile.read`
+  - `voices.read`
+  - `voices.enroll`
 
 ## Trường hợp chỉ chạy lại app
 

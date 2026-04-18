@@ -15,46 +15,49 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
-import { CreateAccountDto } from './dto/create-account.dto';
-import { UpdateAccountDto } from './dto/update-account.dto';
-import { UsersService } from './users.service';
+import { AdminCreateAccountDto } from './dto/admin-create-account.dto';
+import { AdminUpdateAccountDto } from './dto/admin-update-account.dto';
+import { UserService } from './service/user.service';
 
 @ApiTags('users')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles([Role.ADMIN])
 @Controller('users/accounts')
-export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+export class AdminAccountsController {
+  constructor(private readonly userService: UserService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Admin tạo tài khoản đăng nhập mới' })
   @ApiSuccess('Tạo tài khoản thành công')
-  async createAccount(@Body() dto: CreateAccountDto) {
-    return this.usersService.createAccount(dto);
+  async createAccount(@Body() dto: AdminCreateAccountDto) {
+    return this.userService.adminCreateAccount(dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Admin lấy danh sách tài khoản đăng nhập' })
   @ApiSuccess('Lấy danh sách tài khoản thành công')
   async findAllAccounts() {
-    return this.usersService.findAllAccounts();
+    return this.userService.adminFindAllAccounts();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Admin lấy chi tiết một tài khoản đăng nhập' })
   @ApiSuccess('Lấy chi tiết tài khoản thành công')
   async findOneAccount(@Param('id') id: string) {
-    return this.usersService.findOneAccount(id);
+    return this.userService.adminFindOneAccount(id);
   }
 
-  @Patch(':id')
+  @Patch(':id/account')
   @ApiOperation({
-    summary: 'Admin cập nhật role, trạng thái, password và permissions',
+    summary: 'Admin cập nhật tài khoản của người dùng theo ID',
   })
   @ApiSuccess('Cập nhật tài khoản thành công')
-  async updateAccount(@Param('id') id: string, @Body() dto: UpdateAccountDto) {
-    return this.usersService.updateAccount(id, dto);
+  async updateAccount(
+    @Param('id') id: string,
+    @Body() dto: AdminUpdateAccountDto,
+  ) {
+    return this.userService.adminUpdateAccount(id, dto);
   }
 }

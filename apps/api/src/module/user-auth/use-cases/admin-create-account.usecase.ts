@@ -7,12 +7,12 @@ import { BadRequestError } from '@/common/response';
 import { BaseUseCase } from '@/shared/interfaces/base-usecase.interface';
 import { Injectable } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { CreateAccountDto } from '../dto/create-account.dto';
+import { AdminCreateAccountDto } from '../dto/admin-create-account.dto';
 import { UsersRepository } from '../repository/users.repository';
 
 @Injectable()
-export class CreateAccountUseCase implements BaseUseCase<
-  CreateAccountDto,
+export class AdminCreateAccountUseCase implements BaseUseCase<
+  AdminCreateAccountDto,
   any
 > {
   constructor(
@@ -20,7 +20,7 @@ export class CreateAccountUseCase implements BaseUseCase<
     private readonly bcryptService: BcryptService,
   ) {}
 
-  async execute(dto: CreateAccountDto) {
+  async execute(dto: AdminCreateAccountDto) {
     await this.ensureUniqueAccount(dto.email, dto.username);
 
     const role = dto.role ?? Role.OPERATOR;

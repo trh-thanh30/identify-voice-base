@@ -30,7 +30,9 @@ export class PermissionsGuard implements CanActivate {
     );
 
     if (!hasRequiredPermissions) {
-      throw new ForbiddenError('Access denied.');
+      throw new ForbiddenError(
+        'Bạn không có quyền thực hiện chức năng trên. Vui lòng liên hệ admin để được hỗ trợ!',
+      );
     }
 
     return true;

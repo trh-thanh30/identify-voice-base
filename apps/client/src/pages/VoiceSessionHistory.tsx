@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, FileAudio, Loader2, SearchX } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronRight,
+  FileAudio,
+  Loader2,
+  SearchX,
+} from "lucide-react";
 import { useState } from "react";
 
 // import { Badge } from '@/components/ui/badge';
@@ -283,8 +289,14 @@ export default function VoiceSessionHistory() {
                       )}
                     </TableCell>
                     <TableCell className="pr-6 text-right">
-                      <Button type="button" variant="outline" size="sm">
-                        Xem chi tiết
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-slate-400 hover:bg-primary-50 hover:text-primary-400"
+                        aria-label="Xem chi tiết"
+                      >
+                        <ChevronRight className="size-4" />
                       </Button>
                     </TableCell>
                   </TableRow>

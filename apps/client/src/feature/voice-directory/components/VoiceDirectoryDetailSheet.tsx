@@ -179,15 +179,13 @@ export function VoiceDirectoryDetailSheet({
     },
   });
 
-  const deactivateMutation = useMutation({
+  const deleteVoiceMutation = useMutation({
     mutationFn: () => {
       if (!voiceId) throw new Error("Thiếu ID hồ sơ.");
-      return voiceDirectoryApi.deactivateVoice(voiceId);
+      return voiceDirectoryApi.deleteVoice(voiceId);
     },
     onSuccess: () => {
-      toast.success(
-        "Đã vô hiệu hóa hồ sơ. Hồ sơ sẽ không còn trong danh sách.",
-      );
+      toast.success("Đã xóa hồ sơ. Hồ sơ sẽ không còn trong danh sách.");
       setConfirmDeactivateOpen(false);
       onOpenChange(false);
       onDeactivated();
@@ -199,7 +197,7 @@ export function VoiceDirectoryDetailSheet({
       const msg =
         err && typeof err === "object" && "message" in err
           ? String((err as ApiError).message)
-          : "Không thể vô hiệu hóa hồ sơ.";
+          : "Không thể xóa hồ sơ.";
       toast.error(msg);
     },
   });
@@ -255,7 +253,7 @@ export function VoiceDirectoryDetailSheet({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
-          className="flex w-full flex-col gap-0 overflow-hidden sm:max-w-xl md:max-w-6xl"
+          className="flex w-full flex-col gap-0 overflow-hidden sm:max-w-xl md:max-w-4xl"
           showCloseButton
         >
           <SheetHeader className="shrink-0 border-b pb-4 text-left">
@@ -274,7 +272,7 @@ export function VoiceDirectoryDetailSheet({
               </p>
             ) : detail ? (
               <>
-                <section className="space-y-3 rounded-xl border bg-muted/30 p-4">
+                <section className="space-y-3 rounded-xl ">
                   <h3 className="text-sm font-semibold">Mẫu giọng đăng ký</h3>
                   {hasEnrollStreamUrl ? (
                     <div className="flex flex-col gap-3">
@@ -284,12 +282,12 @@ export function VoiceDirectoryDetailSheet({
                         fileName={`${detail.name || "voice-sample"}.wav`}
                         compact
                       />
-                      {!detail.audio_available ? (
+                      {/* {!detail.audio_available ? (
                         <p className="text-xs text-amber-800">
-                          API báo file có thể không có trên disk cục bộ; vẫn thử
-                          phát qua URL nếu CDN còn file.
+                          API báo file có thể không có trên disk cục bộ; vẫn thử phát qua URL nếu
+                          CDN còn file.
                         </p>
-                      ) : null}
+                      ) : null} */}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
@@ -414,7 +412,7 @@ export function VoiceDirectoryDetailSheet({
                     )}
                   </Button>
                 </form>
-
+                <hr />
                 <section className="space-y-3">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <h3 className="text-sm font-semibold">
@@ -544,7 +542,7 @@ export function VoiceDirectoryDetailSheet({
                     className="w-full sm:w-auto"
                     onClick={() => setConfirmDeactivateOpen(true)}
                   >
-                    Vô hiệu hóa hồ sơ
+                    Xóa hồ sơ
                   </Button>
                 </div>
               </>
@@ -557,9 +555,9 @@ export function VoiceDirectoryDetailSheet({
         open={confirmDeactivateOpen}
         onOpenChange={setConfirmDeactivateOpen}
       >
-        <DialogContent>
+        <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Vô hiệu hóa hồ sơ?</DialogTitle>
+            <DialogTitle>Xóa hồ sơ?</DialogTitle>
             <DialogDescription>
               Hồ sơ sẽ ẩn khỏi danh sách và không còn dùng trong nhận dạng mới.
             </DialogDescription>
@@ -575,10 +573,10 @@ export function VoiceDirectoryDetailSheet({
             <Button
               type="button"
               variant="destructive"
-              disabled={deactivateMutation.isPending}
-              onClick={() => deactivateMutation.mutate()}
+              disabled={deleteVoiceMutation.isPending}
+              onClick={() => deleteVoiceMutation.mutate()}
             >
-              {deactivateMutation.isPending ? (
+              {deleteVoiceMutation.isPending ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 "Xác nhận"

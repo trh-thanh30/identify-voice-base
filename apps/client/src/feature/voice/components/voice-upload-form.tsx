@@ -9,7 +9,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { cropAudioFile } from "@/utils/audio.utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { useEffect } from "react";
@@ -20,6 +19,7 @@ import {
   type SubmitHandler,
 } from "react-hook-form";
 import { toast } from "sonner";
+import { useNormalizeAudio } from "../hooks/use-normalize-audio";
 import { useUploadVoice } from "../hooks/use-voice";
 import {
   uploadVoiceSchema,
@@ -32,6 +32,8 @@ import { VoiceAudioPlayer } from "./voice-audio-player";
 
 interface VoiceUploadFormProps {
   initialFile?: File | null;
+  previewAudioUrl?: string | null;
+  initialValues?: Partial<UploadVoiceSchemaInput>;
   initialStart?: number;
   initialEnd?: number;
   onUploadSuccess?: (data?: Partial<VoiceIdentifyTwoItem>) => void;
@@ -49,17 +51,18 @@ const YEAR_OPTIONS = getYearOptions();
 
 function getResetValues(
   initialFile: File | null,
+  initialValues?: Partial<UploadVoiceSchemaInput>,
   initialStart?: number,
   initialEnd?: number,
 ) {
   return {
-    name: "",
-    citizenIdentification: "",
-    phoneNumber: "",
-    hometown: "",
-    job: "",
-    passport: "",
-    criminalRecords: [],
+    name: initialValues?.name ?? "",
+    citizenIdentification: initialValues?.citizenIdentification ?? "",
+    phoneNumber: initialValues?.phoneNumber ?? "",
+    hometown: initialValues?.hometown ?? "",
+    job: initialValues?.job ?? "",
+    passport: initialValues?.passport ?? "",
+    criminalRecords: initialValues?.criminalRecords ?? [],
     audioFile: initialFile,
     start: initialStart,
     end: initialEnd,
@@ -68,6 +71,8 @@ function getResetValues(
 
 export function VoiceUploadForm({
   initialFile = null,
+  previewAudioUrl = null,
+  initialValues,
   initialStart,
   initialEnd,
   onUploadSuccess,
@@ -81,7 +86,12 @@ export function VoiceUploadForm({
     UploadVoiceSchemaOutput
   >({
     resolver: zodResolver(uploadVoiceSchema),
-    defaultValues: getResetValues(initialFile, initialStart, initialEnd),
+    defaultValues: getResetValues(
+      initialFile,
+      initialValues,
+      initialStart,
+      initialEnd,
+    ),
   });
 
   const watchedAudioFile = useWatch({
@@ -97,35 +107,29 @@ export function VoiceUploadForm({
   useEffect(() => {
     // Only reset form when file changes, not when segment changes
 
-    form.reset(getResetValues(initialFile, initialStart, initialEnd));
-  }, [initialFile, form]);
+    form.reset(
+      getResetValues(initialFile, initialValues, initialStart, initialEnd),
+    );
+  }, [initialEnd, initialFile, initialStart, initialValues, form]);
 
   const uploadMutation = useUploadVoice();
+  const { fetchProtectedAudioBlob } = useNormalizeAudio();
 
   const onSubmit: SubmitHandler<UploadVoiceSchemaOutput> = async (values) => {
     try {
       let fileToUpload = values.audioFile;
 
-      if (
-        fileToUpload &&
-        typeof initialStart === "number" &&
-        typeof initialEnd === "number"
-      ) {
-        const loadingToast = toast.loading("Đang xử lý cắt âm thanh...");
+      if (previewAudioUrl) {
+        const audioBlob = await fetchProtectedAudioBlob(previewAudioUrl);
+        const inferredType =
+          audioBlob.type || values.audioFile?.type || "audio/wav";
+        const extension =
+          inferredType.split("/")[1]?.replace("mpeg", "mp3") || "wav";
 
-        try {
-          fileToUpload = await cropAudioFile(
-            fileToUpload,
-            initialStart,
-            initialEnd,
-          );
-          toast.success("Đã xử lý âm thanh đoạn chọn.", { id: loadingToast });
-        } catch (cropError) {
-          toast.error("Lỗi khi cắt âm thanh: " + (cropError as Error).message, {
-            id: loadingToast,
-          });
-          return;
-        }
+        fileToUpload = new File([audioBlob], `enroll-source.${extension}`, {
+          type: inferredType,
+          lastModified: values.audioFile?.lastModified ?? 0,
+        });
       }
 
       if (!fileToUpload) {
@@ -138,7 +142,9 @@ export function VoiceUploadForm({
         audioFile: fileToUpload,
       });
 
-      form.reset(getResetValues(initialFile, initialStart, initialEnd));
+      form.reset(
+        getResetValues(initialFile, initialValues, initialStart, initialEnd),
+      );
 
       onUploadSuccess?.({
         matched_voice_id: response.voice_id || "pending",
@@ -183,10 +189,9 @@ export function VoiceUploadForm({
 
         <VoiceAudioPlayer
           key={playerKey}
-          file={watchedAudioFile ?? null}
+          file={previewAudioUrl ? null : (watchedAudioFile ?? null)}
+          audioUrl={previewAudioUrl}
           title="Audio đăng ký"
-          startAt={initialStart}
-          endAt={initialEnd}
         />
 
         {watchedAudioFile ? (

@@ -51,6 +51,7 @@ export interface IdentifyTwoVoiceRequest {
 export type VoiceTruthSource = "BUSINESS" | "AI" | "NONE";
 
 export interface VoiceIdentifyItem {
+  user_id?: string;
   speaker_label?: string;
   message: string;
   user_id?: string;

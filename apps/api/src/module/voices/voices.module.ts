@@ -6,8 +6,7 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { VoicesRepository } from './repository/voices.repository';
 import { VoicesService } from './service/voices.service';
-import { UpdateVoiceProcessor } from './service/update-voice.processor';
-import { DeactivateVoiceUseCase } from './use-cases/deactivate-voice.usecase';
+import { DeleteVoiceUseCase } from './use-cases/delete-voice.usecase';
 import { FindAllVoicesUseCase } from './use-cases/find-all-voices.usecase';
 import { GetVoiceDetailUseCase } from './use-cases/get-voice-detail.usecase';
 import { UpdateVoiceInfoUseCase } from './use-cases/update-voice-info.usecase';
@@ -35,12 +34,11 @@ import { VoicesController } from './voices.controller';
   providers: [
     VoicesService,
     VoicesRepository,
-    UpdateVoiceProcessor,
     FindAllVoicesUseCase,
     GetVoiceDetailUseCase,
     UpdateVoiceInfoUseCase,
     UpdateVoiceEmbeddingUseCase,
-    DeactivateVoiceUseCase,
+    DeleteVoiceUseCase,
     AuthTokenService,
   ],
   exports: [VoicesService],

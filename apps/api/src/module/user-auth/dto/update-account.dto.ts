@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString } from 'class-validator';
 
-export class UpdateUserDto {
+export class UpdateAccountDto {
   @ApiPropertyOptional({
     example: 'user@example.com',
     description: 'Email mới của người dùng',

@@ -1,17 +1,29 @@
-# 01 — Auth Module (UC00)
+# 01 — Auth & UserAuth Modules (UC00)
 
-> **Last updated:** 2026-04-05
+> **Last updated:** 2026-04-18
 > **Related use cases:** UC00
-> **Module path:** `src/module/auth/`
+> **Module path:** `src/module/auth/`, `src/module/user-auth/`
 
 ---
 
 ## Tổng quan
 
-Module xác thực quản lý danh tính operator (người vận hành hệ thống). Sử dụng chiến lược **JWT với access token ngắn hạn + refresh token dài hạn**.
+Khối xác thực hiện được tách làm 2 module:
+
+- `AuthModule`: login, refresh, logout, reset-password
+- `UserAuthModule`: self account APIs và admin account management
+
+Hệ thống sử dụng chiến lược **JWT với access token ngắn hạn + refresh token dài hạn**.
 
 - **Access token:** hết hạn sau 15 phút — gửi trong `Authorization` header mỗi request
 - **Refresh token:** hết hạn sau 7 ngày — lưu trong DB (`auth_accounts.refresh_token`) hoặc Redis, dùng để cấp lại access token mà không cần đăng nhập lại
+
+**Permission model:**
+
+- `ADMIN`: full access
+- `OPERATOR` mặc định: `profile.read`, `voices.read`, `voices.enroll`
+
+Admin có thể override `permissions` của từng operator.
 
 **NestJS implementation:**
 
@@ -21,7 +33,7 @@ JwtAuthGuard extends AuthGuard('jwt')  // passport-jwt strategy
 
 // Strategy
 JwtStrategy extends PassportStrategy(Strategy)
-  // validate payload: { sub: accountId, username, role }
+  // validate payload: { id, email, username, role, status, permissions }
   // inject vào request.user
 ```
 
@@ -31,7 +43,7 @@ JwtStrategy extends PassportStrategy(Strategy)
 
 ### Mô tả
 
-Xác thực tài khoản operator bằng username/password. Trả về access token và refresh token.
+Xác thực tài khoản bằng `email/password`. Trả về access token và refresh token.
 
 ### Request
 
@@ -53,7 +65,7 @@ interface LoginDto {
 
 ```json
 {
-  "username": "admin",
+  "email": "admin@example.com",
   "password": "securepassword123"
 }
 ```
@@ -78,8 +90,9 @@ interface LoginResponse {
     expires_in: number; // giây: 900
     account: {
       id: string; // UUID — từ DB
-      username: string;
-      role: 'ADMIN';
+      email: string;
+      role: 'ADMIN' | 'OPERATOR';
+      permissions: string[];
     };
   };
 }
@@ -97,8 +110,20 @@ interface LoginResponse {
     "expires_in": 900,
     "account": {
       "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-      "username": "admin",
-      "role": "ADMIN"
+      "email": "admin@example.com",
+      "role": "ADMIN",
+      "permissions": [
+        "accounts.manage",
+        "profile.read",
+        "profile.update",
+        "profile.delete",
+        "voices.read",
+        "voices.enroll",
+        "voices.update",
+        "voices.delete",
+        "identify.run",
+        "sessions.read"
+      ]
     }
   }
 }
@@ -132,9 +157,8 @@ interface LoginResponse {
 5. Nếu không khớp → 401
 6. Ký access_token: jwt.sign({ sub: id, username, role }, SECRET, { expiresIn: '15m' })
 7. Ký refresh_token: jwt.sign({ sub: id }, REFRESH_SECRET, { expiresIn: '7d' })
-8. UPDATE auth_accounts SET refresh_token = hash(refresh_token) WHERE id = $1
-   (lưu hash để không expose plain token trong DB)
-9. Trả 200 kèm cả hai token
+8. UPDATE auth_accounts SET refresh_token = refresh_token WHERE id = $1
+9. Trả 200 kèm cả hai token và thông tin account hiện tại
 ```
 
 ---
@@ -172,8 +196,8 @@ interface RefreshResponse {
   statusCode: 200;
   message: string;
   data: {
-    access_token: string; // JWT mới — hết hạn sau 15 phút
-    expires_in: number; // 900
+    access_token: string;
+    refresh_token: string;
   };
 }
 ```
@@ -186,7 +210,7 @@ interface RefreshResponse {
   "message": "Token được làm mới thành công",
   "data": {
     "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "expires_in": 900
+    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   }
 }
 ```
@@ -206,9 +230,9 @@ interface RefreshResponse {
 2. jwt.verify(refresh_token, REFRESH_SECRET) → giải mã payload { sub }
 2. Nếu verify thất bại (hết hạn/sai chữ ký) → 401
 3. SELECT * FROM auth_accounts WHERE id = sub
-4. So sánh bcrypt.compare(refresh_token, stored_refresh_token_hash)
+4. So sánh với `auth_accounts.refresh_token`
 5. Nếu không khớp (đã logout hoặc bị invalidate) → 401
-6. Ký access_token mới → trả 200
+6. Ký lại access_token và refresh_token mới → trả 200
 ```
 
 ---
@@ -257,7 +281,7 @@ curl -X POST http://localhost:3000/api/auth/logout \
 1. JwtAuthGuard xác thực access token → inject request.user.id
 2. Xóa cookie `refresh_token`
 3. UPDATE auth_accounts SET refresh_token = NULL WHERE id = $1
-3. Trả 200 — kể từ lúc này refresh_token cũ không dùng được nữa
+4. Trả 200 — kể từ lúc này refresh_token cũ không dùng được nữa
 ```
 
 ---

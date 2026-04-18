@@ -6,8 +6,11 @@ import type {
 } from "axios";
 import { env } from "@/configs/env.config";
 import { expireClientSession } from "@/lib/auth-session";
-import { useAuthStore } from "@/store/auth.store";
-import type { ApiError, ApiResponse } from "@/types";
+import {
+  getValidAccessToken,
+  silentlyRefreshAccessToken,
+} from "@/lib/auth-refresh";
+import type { ApiError } from "@/types";
 
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
@@ -72,43 +75,18 @@ function isPublicAuthRequest(url: string | undefined): boolean {
   return PUBLIC_AUTH_ENDPOINTS.has(getRequestPath(url));
 }
 
-let refreshPromise: Promise<string> | null = null;
-
-async function refreshAccessToken(): Promise<string> {
-  if (!refreshPromise) {
-    refreshPromise = axios
-      .post<ApiResponse<{ access_token: string }>>(
-        `${env.API_BASE_URL}/auth/refresh`,
-        null,
-        {
-          withCredentials: true,
-          headers: {
-            Accept: "application/json",
-          },
-        },
-      )
-      .then((response) => {
-        const nextToken = response.data.data.access_token;
-        useAuthStore.getState().setAccessToken(nextToken);
-        return nextToken;
-      })
-      .catch((error: unknown) => {
-        expireClientSession("unauthorized");
-        throw error;
-      })
-      .finally(() => {
-        refreshPromise = null;
-      });
-  }
-
-  return refreshPromise;
-}
-
 axiosInstance.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = useAuthStore.getState().accessToken;
+  async (config: InternalAxiosRequestConfig) => {
+    if (isPublicAuthRequest(config.url)) {
+      return config;
+    }
 
-    if (token && config.headers && !isPublicAuthRequest(config.url)) {
+    const token = await getValidAccessToken({
+      minValidityMs: 30_000,
+      reason: "expired",
+    });
+
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -134,7 +112,7 @@ axiosInstance.interceptors.response.use(
         originalConfig._retry = true;
 
         try {
-          const nextToken = await refreshAccessToken();
+          const nextToken = await silentlyRefreshAccessToken("unauthorized");
           if (originalConfig.headers) {
             originalConfig.headers.Authorization = `Bearer ${nextToken}`;
           }
@@ -154,7 +132,11 @@ axiosInstance.interceptors.response.use(
         errors: payload.errors,
       };
 
-      if (status === 401 && !isPublicAuthRequest(error.config?.url)) {
+      if (
+        status === 401 &&
+        originalConfig?._retry &&
+        !isPublicAuthRequest(error.config?.url)
+      ) {
         expireClientSession("unauthorized");
       }
 

@@ -1,11 +1,8 @@
 import axiosInstance from "@/api/axios.instance";
-import { refreshTokenApi } from "@/api/auth.api";
 import { env } from "@/configs/env.config";
 import { VOICE_API_ENDPOINTS } from "@/constants";
-import { expireClientSession } from "@/lib/auth-session";
-import { useAuthStore } from "@/store/auth.store";
+import { getValidAccessToken } from "@/lib/auth-refresh";
 import type { ApiResponse } from "@/types";
-
 import type { SessionDetail, SessionListResult } from "../types/session.types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -82,31 +79,27 @@ export const sessionsApi = {
 
   async getSpeakerAudioBlob(audioUrl: string): Promise<Blob> {
     const normalizedUrl = normalizeSpeakerAudioUrl(audioUrl);
-    let accessToken = useAuthStore.getState().accessToken;
+    const accessToken = await getValidAccessToken({
+      reason: "unauthorized",
+    });
 
     if (!accessToken) {
-      try {
-        const refreshed = await refreshTokenApi();
-        accessToken = refreshed.data.access_token;
-        useAuthStore.getState().setAccessToken(accessToken);
-      } catch {
-        expireClientSession("unauthorized");
-        throw new Error("Phiên đăng nhập đã hết hạn.");
-      }
+      throw new Error("Phiên đăng nhập đã hết hạn.");
     }
 
     let response = await fetchSpeakerAudioWithToken(normalizedUrl, accessToken);
 
     if (response.status === 401) {
-      try {
-        const refreshed = await refreshTokenApi();
-        const nextToken = refreshed.data.access_token;
-        useAuthStore.getState().setAccessToken(nextToken);
-        response = await fetchSpeakerAudioWithToken(normalizedUrl, nextToken);
-      } catch {
-        expireClientSession("unauthorized");
+      const nextToken = await getValidAccessToken({
+        forceRefresh: true,
+        reason: "unauthorized",
+      });
+
+      if (!nextToken) {
         throw new Error("Không thể làm mới phiên đăng nhập.");
       }
+
+      response = await fetchSpeakerAudioWithToken(normalizedUrl, nextToken);
     }
 
     if (!response.ok) {

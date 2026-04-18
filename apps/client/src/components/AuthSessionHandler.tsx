@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { refreshTokenApi } from "@/api/auth.api";
 import { ROUTES } from "@/constants";
-import { expireClientSession, SESSION_EXPIRED_EVENT } from "@/lib/auth-session";
+import { SESSION_EXPIRED_EVENT } from "@/lib/auth-session";
+import { getValidAccessToken } from "@/lib/auth-refresh";
 import { useAuthStore } from "@/store/auth.store";
 import {
   getAccessTokenExpiryMs,
@@ -22,7 +22,6 @@ export function AuthSessionHandler() {
   const location = useLocation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const accessToken = useAuthStore((state) => state.accessToken);
-  const setAccessToken = useAuthStore((state) => state.setAccessToken);
 
   useEffect(() => {
     const handleSessionExpired = () => {
@@ -53,14 +52,15 @@ export function AuthSessionHandler() {
 
     const refreshAccessToken = async () => {
       try {
-        const response = await refreshTokenApi();
-        if (!cancelled) {
-          setAccessToken(response.data.access_token);
-        }
+        await getValidAccessToken({
+          forceRefresh: true,
+          reason: "expired",
+        });
       } catch {
-        if (!cancelled) {
-          expireClientSession("expired");
+        if (cancelled) {
+          return;
         }
+        // Terminal refresh errors already clear the session in shared infrastructure.
       }
     };
 
@@ -92,7 +92,7 @@ export function AuthSessionHandler() {
         window.clearTimeout(timeoutId);
       }
     };
-  }, [accessToken, isAuthenticated, setAccessToken]);
+  }, [accessToken, isAuthenticated]);
 
   return null;
 }

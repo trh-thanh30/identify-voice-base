@@ -1,7 +1,5 @@
-import { refreshTokenApi } from "@/api/auth.api";
 import { env } from "@/configs/env.config";
-import { expireClientSession } from "@/lib/auth-session";
-import { useAuthStore } from "@/store/auth.store";
+import { getValidAccessToken } from "@/lib/auth-refresh";
 
 export function useNormalizeAudio() {
   const WAVEFORM_FALLBACK_MESSAGE =
@@ -41,31 +39,27 @@ export function useNormalizeAudio() {
 
   async function fetchProtectedAudioBlob(audioUrl: string): Promise<Blob> {
     const normalizedUrl = normalizeAudioUrl(audioUrl);
-    let accessToken = useAuthStore.getState().accessToken;
+    const accessToken = await getValidAccessToken({
+      reason: "unauthorized",
+    });
 
     if (!accessToken) {
-      try {
-        const refreshed = await refreshTokenApi();
-        accessToken = refreshed.data.access_token;
-        useAuthStore.getState().setAccessToken(accessToken);
-      } catch {
-        expireClientSession("unauthorized");
-        throw new Error("Phien dang nhap da het han.");
-      }
+      throw new Error("Phien dang nhap da het han.");
     }
 
     let response = await fetchAudioWithToken(normalizedUrl, accessToken);
 
     if (response.status === 401) {
-      try {
-        const refreshed = await refreshTokenApi();
-        const nextToken = refreshed.data.access_token;
-        useAuthStore.getState().setAccessToken(nextToken);
-        response = await fetchAudioWithToken(normalizedUrl, nextToken);
-      } catch {
-        expireClientSession("unauthorized");
+      const nextToken = await getValidAccessToken({
+        forceRefresh: true,
+        reason: "unauthorized",
+      });
+
+      if (!nextToken) {
         throw new Error("Khong the lam moi phien dang nhap.");
       }
+
+      response = await fetchAudioWithToken(normalizedUrl, nextToken);
     }
 
     if (!response.ok) {

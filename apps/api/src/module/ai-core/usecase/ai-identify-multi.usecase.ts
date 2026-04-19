@@ -72,7 +72,7 @@ export class AiIdentifyMultiUseCase {
 
                 throw new InternalServerErrorException(
                   (error.response?.data as any)?.['message'] ||
-                    'Lỗi nhận diện hội thoại MULTI từ AI Service',
+                    'Lỗi nhận diện hội thoại (Multi) từ AI CORE',
                 );
               },
             ),

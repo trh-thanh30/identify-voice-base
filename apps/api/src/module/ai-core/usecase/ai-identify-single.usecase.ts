@@ -84,7 +84,7 @@ export class AiIdentifySingleUseCase {
 
                 throw new InternalServerErrorException(
                   (error.response?.data as any)?.['message'] ||
-                    'Lỗi nhận diện hội thoại SINGLE từ AI Service',
+                    'Lỗi nhận diện hội thoại (Single) từ AI CORE',
                 );
               },
             ),

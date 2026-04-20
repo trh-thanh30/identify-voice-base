@@ -11,6 +11,7 @@ import * as path from 'path';
 
 import storageConfig from '@/config/storage.config';
 import { PrismaService } from '@/database/prisma/prisma.service';
+import { AudioNormalizeService } from '@/module/ai-core/service/audio-normalize.service';
 import { UploadService } from '@/module/upload/service/upload.service';
 
 import { AiCoreService } from '@/module/ai-core/service/ai-core.service';
@@ -24,6 +25,7 @@ export class EnrollVoiceUseCase {
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
     private readonly core: AiCoreService,
+    private readonly audioNormalizeService: AudioNormalizeService,
     @Inject(storageConfig.KEY)
     private readonly config: ConfigType<typeof storageConfig>,
   ) {}
@@ -44,6 +46,7 @@ export class EnrollVoiceUseCase {
     );
 
     let voiceId: string;
+    let normalizedAudioPath: string | null = null;
 
     try {
       // 2. Gửi audio sang AI Service để trích xuất embedding và lấy voice_id (Point ID)
@@ -56,10 +59,14 @@ export class EnrollVoiceUseCase {
         audioFile.file_path,
       );
 
+      const normalizedAudio =
+        await this.audioNormalizeService.normalizeForAi(absolutePath);
+      normalizedAudioPath = normalizedAudio.path;
+
       const aiResponse = await this.core.uploadVoice(
-        absolutePath,
+        normalizedAudio.path,
         dto.name,
-        audioFile.mime_type,
+        normalizedAudio.mimeType,
       );
 
       voiceId = aiResponse.voice_id;
@@ -85,6 +92,8 @@ export class EnrollVoiceUseCase {
       throw new UnprocessableEntityException(
         error.message || 'AI Service từ chối audio hoặc không phản hồi',
       );
+    } finally {
+      await this.audioNormalizeService.cleanup(normalizedAudioPath);
     }
 
     // Tạo audio_url hoàn chỉnh

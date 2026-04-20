@@ -3,6 +3,7 @@ import { AiCoreService } from '@/module/ai-core/service/ai-core.service';
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { AudioNormalizeService } from './service/audio-normalize.service';
 import { AiDeleteVoiceUseCase } from './usecase/ai-delete-voice.usecase';
 import { AiIdentifyMultiUseCase } from './usecase/ai-identify-multi.usecase';
 import { AiIdentifySingleUseCase } from './usecase/ai-identify-single.usecase';
@@ -12,12 +13,13 @@ import { UploadVoiceUseCase } from './usecase/ai-upload-voice.usecase';
   imports: [HttpModule, ConfigModule],
   providers: [
     AiCoreService,
+    AudioNormalizeService,
     AudioSegmentService,
     UploadVoiceUseCase,
     AiIdentifySingleUseCase,
     AiIdentifyMultiUseCase,
     AiDeleteVoiceUseCase,
   ],
-  exports: [AiCoreService, AudioSegmentService],
+  exports: [AiCoreService, AudioNormalizeService, AudioSegmentService],
 })
 export class AiCoreModule {}

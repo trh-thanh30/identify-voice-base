@@ -190,8 +190,14 @@ export class UploadService {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`music-metadata parse lỗi: ${msg}`);
-      throw new InternalServerErrorException(
-        'Không thể đọc thông tin file audio',
+      throw new UnprocessableEntityException(
+        'File audio không đọc được hoặc có thể đã bị hỏng. Vui lòng kiểm tra file gốc, xuất lại bản ghi và tải lên lại.',
+      );
+    }
+
+    if (!Number.isFinite(durationSec) || durationSec <= 0) {
+      throw new UnprocessableEntityException(
+        'File audio không có thời lượng hợp lệ hoặc có thể đã bị hỏng. Vui lòng kiểm tra file gốc, xuất lại bản ghi và tải lên lại.',
       );
     }
 

@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import ffmpeg from 'fluent-ffmpeg';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -29,7 +33,11 @@ export class AudioNormalizeService {
         })
         .on('error', (err: Error) => {
           this.logger.error(`Lỗi chuẩn hóa audio: ${err.message}`);
-          reject(err);
+          reject(
+            new UnprocessableEntityException(
+              'File audio không thể giải mã để chuẩn hóa, có thể đã bị hỏng hoặc dùng codec không được hỗ trợ. Vui lòng kiểm tra file gốc, xuất lại bản ghi và tải lên lại.',
+            ),
+          );
         })
         .on('end', () => {
           this.logger.debug(`Hoàn thành chuẩn hóa audio: ${outputPath}`);

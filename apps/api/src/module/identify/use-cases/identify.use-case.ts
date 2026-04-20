@@ -11,6 +11,7 @@ import * as path from 'path';
 import storageConfig from '@/config/storage.config';
 import { PrismaService } from '@/database/prisma/prisma.service';
 import { AiCoreService } from '@/module/ai-core/service/ai-core.service';
+import { AudioNormalizeService } from '@/module/ai-core/service/audio-normalize.service';
 import { NormalizedIdentifyResponse } from '@/module/ai-core/usecase/ai-identify-single.usecase';
 import { SessionsRepository } from '@/module/sessions/repository/sessions.repository';
 import { UploadService } from '@/module/upload/service/upload.service';
@@ -23,6 +24,7 @@ export class IdentifyUseCase {
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
     private readonly aiCoreService: AiCoreService,
+    private readonly audioNormalizeService: AudioNormalizeService,
     private readonly sessionsRepository: SessionsRepository,
     @Inject(storageConfig.KEY)
     private readonly config: ConfigType<typeof storageConfig>,
@@ -51,18 +53,23 @@ export class IdentifyUseCase {
     );
 
     let aiResponse: NormalizedIdentifyResponse = { speakers: [] };
+    let normalizedAudioPath: string | null = null;
 
     try {
+      const normalizedAudio =
+        await this.audioNormalizeService.normalizeForAi(absolutePath);
+      normalizedAudioPath = normalizedAudio.path;
+
       // 2. Gọi AI
       if (type === 'SINGLE') {
         aiResponse = await this.aiCoreService.identifySingle(
-          absolutePath,
-          audioFile.mime_type,
+          normalizedAudio.path,
+          normalizedAudio.mimeType,
         );
       } else {
         aiResponse = await this.aiCoreService.identifyMulti(
-          absolutePath,
-          audioFile.mime_type,
+          normalizedAudio.path,
+          normalizedAudio.mimeType,
         );
       }
 
@@ -108,6 +115,8 @@ export class IdentifyUseCase {
       }
       this.logger.error(`Lỗi Nhận diện âm thanh: ${error.message}`);
       throw error;
+    } finally {
+      await this.audioNormalizeService.cleanup(normalizedAudioPath);
     }
 
     // 4. Lưu session thông qua SessionsRepository (chỉ lưu kết quả RAW đã chuẩn hoá từ AI)

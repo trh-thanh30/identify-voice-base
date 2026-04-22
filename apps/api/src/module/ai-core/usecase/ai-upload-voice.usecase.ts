@@ -36,7 +36,7 @@ export class UploadVoiceUseCase {
     mimeType?: string,
   ): Promise<AiCoreUploadResponse> {
     const formData = new FormData();
-    const uploadUrl = `${this.config.url}/upload_voice`;
+    const uploadUrl = `${this.config.url}/upload_voice/`;
 
     if (!fs.existsSync(filePath)) {
       throw new InternalServerErrorException(`File không tồn tại: ${filePath}`);
@@ -82,6 +82,7 @@ export class UploadVoiceUseCase {
 
       return data;
     } catch (error) {
+      console.log(error);
       if (error instanceof InternalServerErrorException) throw error;
 
       throw new InternalServerErrorException(

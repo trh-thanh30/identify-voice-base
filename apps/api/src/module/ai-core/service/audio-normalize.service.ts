@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import ffmpeg from 'fluent-ffmpeg';
 import * as fs from 'fs/promises';
+import * as os from 'os';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -18,7 +19,10 @@ export class AudioNormalizeService {
   private readonly logger = new Logger(AudioNormalizeService.name);
 
   async normalizeForAi(inputPath: string): Promise<NormalizedAudioFile> {
-    const outputPath = path.join('/tmp', `ai_audio_${uuidv4()}.wav`);
+    const outputDir = path.join(os.tmpdir(), 'identify-voice-api');
+    await fs.mkdir(outputDir, { recursive: true });
+
+    const outputPath = path.join(outputDir, `ai_audio_${uuidv4()}.wav`);
 
     await new Promise<void>((resolve, reject) => {
       ffmpeg(inputPath)

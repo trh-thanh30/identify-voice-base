@@ -1,6 +1,8 @@
 // cspell:ignore atrim
 import { Injectable, Logger } from '@nestjs/common';
 import ffmpeg from 'fluent-ffmpeg';
+import * as fs from 'fs/promises';
+import * as os from 'os';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -21,7 +23,10 @@ export class AudioSegmentService {
     }
 
     // Đảm bảo outputPath nằm trong thư mục tạm
-    const outputPath = path.join('/tmp', `speaker_${uuidv4()}.wav`);
+    const outputDir = path.join(os.tmpdir(), 'identify-voice-api');
+    await fs.mkdir(outputDir, { recursive: true });
+
+    const outputPath = path.join(outputDir, `speaker_${uuidv4()}.wav`);
 
     return new Promise((resolve, reject) => {
       const command = ffmpeg(originalAudioPath);

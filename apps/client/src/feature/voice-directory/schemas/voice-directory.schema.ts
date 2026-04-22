@@ -22,6 +22,14 @@ export const updateVoiceDirectoryFormSchema = z.object({
   hometown: z.string().trim().max(200),
   job: z.string().trim().max(100),
   passport: z.string().trim(),
+  age: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === "" || (/^\d+$/.test(value) && Number(value) > 0),
+      "Tuổi không hợp lệ.",
+    ),
+  gender: z.enum(["", "MALE", "FEMALE"]),
   criminal_record: z.array(criminalRecordItemSchema),
 });
 

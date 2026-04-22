@@ -43,13 +43,33 @@ const criminalRecordItemSchema = z.object({
     .refine((value) => /^\d{4}$/.test(value), "Năm không hợp lệ."),
 });
 
+const genderSchema = z.enum(["", "MALE", "FEMALE"]).default("");
+
 export const uploadVoiceSchema = z.object({
   name: z.string().trim().min(1, "Vui lòng nhập họ tên."),
   citizenIdentification: z.string().trim().optional().default(""),
-  phoneNumber: z.string().trim().optional().default(""),
+  phoneNumber: z
+    .string()
+    .trim()
+    .optional()
+    .default("")
+    .refine(
+      (value) => value === "" || /^[0-9]{10,11}$/.test(value),
+      "Số điện thoại không hợp lệ (10-11 số).",
+    ),
   hometown: z.string().trim().optional().default(""),
   job: z.string().trim().optional().default(""),
   passport: z.string().trim().optional().default(""),
+  age: z
+    .string()
+    .trim()
+    .optional()
+    .default("")
+    .refine(
+      (value) => value === "" || (/^\d+$/.test(value) && Number(value) > 0),
+      "Tuổi không hợp lệ.",
+    ),
+  gender: genderSchema,
   criminalRecords: z.array(criminalRecordItemSchema).default([]),
   audioFile: audioFileSchema,
   start: z.number().optional(),

@@ -1,7 +1,6 @@
 import { useDebounce } from "@/hooks/useDebounce";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Briefcase,
   ChevronRight,
   IdCard,
   Loader2,
@@ -69,6 +68,70 @@ const SORT_OPTIONS = [
 ] as const;
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+
+function GenderPill({
+  gender,
+}: {
+  gender?: "MALE" | "FEMALE" | "OTHER" | null;
+}) {
+  if (gender === "MALE") {
+    return (
+      <span className="inline-flex items-center rounded-md bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+        Nam
+      </span>
+    );
+  }
+
+  if (gender === "FEMALE") {
+    return (
+      <span className="inline-flex items-center rounded-md bg-pink-50 px-2 py-0.5 text-xs font-medium text-pink-700">
+        Nữ
+      </span>
+    );
+  }
+
+  return <span className="text-xs text-slate-400">—</span>;
+}
+
+function AgePill({ age }: { age?: number | null }) {
+  if (typeof age !== "number" || !Number.isFinite(age) || age <= 0) {
+    return <span className="text-xs text-slate-400">—</span>;
+  }
+
+  return (
+    <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+      {age}
+    </span>
+  );
+}
+
+function PassportPill({ value }: { value?: string | null }) {
+  if (!value) {
+    return <span className="text-xs text-slate-400">—</span>;
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
+      <svg
+        viewBox="0 0 24 24"
+        className="size-3 text-indigo-500"
+        aria-hidden="true"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      >
+        <rect x="5" y="3" width="14" height="18" rx="2" />
+        <circle cx="12" cy="10" r="3" />
+        <path d="M9 10h6" />
+        <path d="M12 7c1 1.7 1 4.3 0 6" />
+        <path d="M8 17h8" />
+      </svg>
+      {value}
+    </span>
+  );
+}
 
 function buildPaginationItems(currentPage: number, totalPages: number) {
   if (totalPages <= 7) {
@@ -261,15 +324,19 @@ export default function VoiceDirectory() {
             )}
           </div>
         ) : (
-          <Table>
+          <Table className="table-fixed">
             <TableHeader className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_rgba(0,0,0,0.05)]">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-75 pl-6">Họ và tên</TableHead>
-                <TableHead>SĐT</TableHead>
-                <TableHead>CCCD</TableHead>
-                <TableHead>Công việc</TableHead>
-                <TableHead>Ngày định danh</TableHead>
-                <TableHead className="text-right pr-6">Thao tác</TableHead>
+                <TableHead className="w-[20%] pl-6">Họ và tên</TableHead>
+                <TableHead className="w-[9%]">Giới tính</TableHead>
+                <TableHead className="w-[8%]">Độ tuổi</TableHead>
+                <TableHead className="w-[14%]">CCCD</TableHead>
+                <TableHead className="w-[15%]">Số điện thoại</TableHead>
+                <TableHead className="w-[12%]">Hộ chiếu</TableHead>
+                <TableHead className="w-[13%]">Ngày định danh</TableHead>
+                <TableHead className="w-[9%] pr-6 text-center">
+                  Thao tác
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -284,31 +351,27 @@ export default function VoiceDirectory() {
                     onClick={() => openDetail(row.id)}
                   >
                     {/* Name + Avatar */}
-                    <TableCell className="pl-6 py-3">
+                    <TableCell className="py-3 pl-6">
                       <div className="flex items-center gap-3">
                         <div
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${avatarColor}`}
                         >
                           {initial}
                         </div>
-                        <span className="font-semibold text-slate-800 text-sm">
+                        <span className="truncate text-sm font-semibold text-slate-800">
                           {row.name}
                         </span>
                       </div>
                     </TableCell>
 
-                    {/* SĐT */}
+                    {/* Giới tính */}
                     <TableCell>
-                      {row.phone_number ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
-                          <Phone className="size-3 text-green-500" />
-                          {row.phone_number}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-400">
-                          Chưa có SĐT
-                        </span>
-                      )}
+                      <GenderPill gender={row.gender} />
+                    </TableCell>
+
+                    {/* Độ tuổi */}
+                    <TableCell>
+                      <AgePill age={row.age} />
                     </TableCell>
 
                     {/* CCCD */}
@@ -324,17 +387,24 @@ export default function VoiceDirectory() {
                         </span>
                       )}
                     </TableCell>
+
+                    {/* Số điện thoại */}
                     <TableCell>
-                      {row.job ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                          <Briefcase className="size-3 text-blue-500" />
-                          {row.job}
+                      {row.phone_number ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                          <Phone className="size-3 text-green-500" />
+                          {row.phone_number}
                         </span>
                       ) : (
                         <span className="text-xs text-slate-400">
-                          Chưa có công việc
+                          Chưa có SĐT
                         </span>
                       )}
+                    </TableCell>
+
+                    {/* Hộ chiếu */}
+                    <TableCell>
+                      <PassportPill value={row.passport} />
                     </TableCell>
 
                     {/* Ngày định danh */}
@@ -352,7 +422,7 @@ export default function VoiceDirectory() {
                     </TableCell>
 
                     {/* Action */}
-                    <TableCell className="text-right pr-6">
+                    <TableCell className="pr-6 text-center">
                       <Button
                         type="button"
                         variant="ghost"

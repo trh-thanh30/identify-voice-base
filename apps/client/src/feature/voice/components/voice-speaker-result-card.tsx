@@ -26,7 +26,7 @@ import type {
   VoiceIdentifyTwoItem,
 } from "../types/voice.types";
 import { getVoiceScoreMeta } from "../utils/voice-score";
-import { VoiceTop5MatchTable } from "./voice-top5-match-table";
+import { VoiceSpeakerMatchTable } from "./voice-speaker-match-table";
 
 interface VoiceSpeakerResultCardProps {
   title: string;
@@ -179,7 +179,7 @@ export function VoiceSpeakerResultCard({
           ) : null}
 
           {!isUnknown ? (
-            <VoiceTop5MatchTable
+            <VoiceSpeakerMatchTable
               title="Kết quả"
               description=""
               items={top5Items}

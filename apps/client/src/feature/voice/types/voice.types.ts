@@ -8,6 +8,8 @@ export interface AudioSegment {
   end: number;
 }
 
+export type VoiceGender = "MALE" | "FEMALE" | "OTHER";
+
 export interface UploadVoiceFormValues {
   name: string;
   citizenIdentification: string;
@@ -15,6 +17,8 @@ export interface UploadVoiceFormValues {
   hometown: string;
   job: string;
   passport: string;
+  age: string;
+  gender: "" | VoiceGender;
   criminalRecord: string;
   audioFile: File | null;
   start?: number;
@@ -36,6 +40,8 @@ export interface UploadVoiceRequest {
   hometown: string;
   job: string;
   passport: string;
+  age: string;
+  gender: "" | VoiceGender;
   criminal_record: string;
   file: File;
 }
@@ -63,6 +69,8 @@ export interface VoiceIdentifyItem {
   hometown?: string;
   job?: string;
   passport?: string;
+  age?: number;
+  gender?: VoiceGender;
   criminal_record?: CriminalRecordItem[] | unknown[];
   audio_url?: string;
   enroll_audio_url?: string;
@@ -80,6 +88,8 @@ export interface UploadVoiceResponse {
   voice_id?: string;
   user_id?: string;
   audio_url?: string;
+  age?: number;
+  gender?: VoiceGender;
   enrolled_at?: string;
   raw: unknown;
 }

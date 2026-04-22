@@ -8,6 +8,7 @@ import type {
   IdentifyVoiceResponse,
   UploadVoiceRequest,
   UploadVoiceResponse,
+  VoiceGender,
   VoiceIdentifyItem,
   VoiceIdentifyTwoItem,
   VoiceTruthSource,
@@ -42,8 +43,21 @@ function asNumber(value: unknown): number | undefined {
   return undefined;
 }
 
+function asAgeNumber(value: unknown): number | undefined {
+  const age = asNumber(value);
+  return typeof age === "number" && age > 0 ? age : undefined;
+}
+
 function asTruthSource(value: unknown): VoiceTruthSource | undefined {
   if (value === "BUSINESS" || value === "AI" || value === "NONE") {
+    return value;
+  }
+
+  return undefined;
+}
+
+function asVoiceGender(value: unknown): VoiceGender | undefined {
+  if (value === "MALE" || value === "FEMALE") {
     return value;
   }
 
@@ -191,6 +205,8 @@ function normalizeIdentifyItem(item: unknown): VoiceIdentifyItem | null {
     hometown: asString(data.hometown, asString(item.hometown, "")),
     job: asString(data.job, asString(item.job, "")),
     passport: asString(data.passport, asString(item.passport, "")),
+    age: asAgeNumber(data.age ?? item.age),
+    gender: asVoiceGender(data.gender ?? item.gender),
     criminal_record: normalizeCriminalRecord(
       data.criminal_record ?? item.criminal_record,
     ),
@@ -252,6 +268,8 @@ function buildUploadVoiceFormData(payload: UploadVoiceRequest): FormData {
   appendIfPresent(formData, "hometown", payload.hometown);
   appendIfPresent(formData, "job", payload.job);
   appendIfPresent(formData, "passport", payload.passport);
+  appendIfPresent(formData, "age", payload.age);
+  appendIfPresent(formData, "gender", payload.gender);
   appendIfPresent(formData, "criminal_record", payload.criminal_record);
 
   return formData;
@@ -283,6 +301,8 @@ export const voiceApi = {
       audio_url: isRecord(data)
         ? asString(data.audio_url, "") || undefined
         : undefined,
+      age: isRecord(data) ? asAgeNumber(data.age) : undefined,
+      gender: isRecord(data) ? asVoiceGender(data.gender) : undefined,
       enrolled_at: isRecord(data)
         ? asString(data.enrolled_at, "") || undefined
         : undefined,

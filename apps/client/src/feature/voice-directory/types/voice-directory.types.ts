@@ -12,6 +12,8 @@ export interface VoiceDirectoryListItem {
   citizen_identification: string | null;
   phone_number: string | null;
   passport?: string | null;
+  age?: number | null;
+  gender?: "MALE" | "FEMALE" | "OTHER" | null;
   hometown?: string | null;
   job?: string | null;
   criminal_record?: unknown;
@@ -46,6 +48,8 @@ export interface VoiceDirectoryDetail {
   hometown: string | null;
   job: string | null;
   passport: string | null;
+  age: number | null;
+  gender: "MALE" | "FEMALE" | "OTHER" | null;
   criminal_record: Array<{ case: string; year: number }> | null;
   audio_url: string | null;
   audio_available: boolean;
@@ -61,6 +65,8 @@ export interface UpdateVoiceInfoPayload {
   hometown?: string;
   job?: string;
   passport?: string;
+  age?: number;
+  gender?: "MALE" | "FEMALE" | "OTHER";
   criminal_record?: Array<{ case: string; year: number }>;
 }
 
@@ -69,6 +75,8 @@ export interface UpdateVoiceInfoResponse {
   name: string;
   phone_number?: string | null;
   job?: string | null;
+  age?: number | null;
+  gender?: "MALE" | "FEMALE" | "OTHER" | null;
   updated_at?: string;
 }
 

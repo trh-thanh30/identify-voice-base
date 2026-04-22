@@ -31,12 +31,20 @@ function getApiErrorPayload(data: unknown) {
   }
 
   const nestedError = isRecord(data.error) ? data.error : undefined;
-  const details = isRecord(nestedError?.details)
-    ? nestedError.details
-    : undefined;
+  const details =
+    (isRecord(nestedError?.details) ? nestedError.details : undefined) ??
+    (isRecord(data.details) ? data.details : undefined);
+  const validationErrors = Array.isArray(details?.validationErrors)
+    ? details.validationErrors.filter(
+        (message): message is string => typeof message === "string",
+      )
+    : [];
+  const validationMessage =
+    validationErrors.length > 0 ? validationErrors.join("\n") : undefined;
 
   return {
     message:
+      validationMessage ??
       (typeof nestedError?.message === "string"
         ? nestedError.message
         : undefined) ??

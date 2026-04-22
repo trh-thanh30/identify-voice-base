@@ -35,11 +35,11 @@ export class AiSpeechToTextUseCase {
       contentType: file.mimetype,
     });
 
-    if (dto.language) {
-      formData.append('language', dto.language);
-    }
-    formData.append('return_timestamp', String(dto.return_timestamp ?? false));
-    formData.append('denoise_audio', String(dto.denoise_audio ?? false));
+    const params = {
+      ...(dto.language ? { language: dto.language } : {}),
+      return_timestamp: dto.return_timestamp ?? false,
+      denoise_audio: dto.denoise_audio ?? false,
+    };
 
     const url = `${this.config.speechToText.url}/s2t_ml`;
 
@@ -48,6 +48,7 @@ export class AiSpeechToTextUseCase {
         this.httpService
           .post<any, FormData>(url, formData, {
             headers: formData.getHeaders(),
+            params,
             timeout: this.config.timeout,
           })
           .pipe(

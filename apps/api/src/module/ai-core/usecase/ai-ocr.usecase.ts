@@ -38,7 +38,10 @@ export class AiOcrUseCase {
     if (dto.language !== undefined) {
       formData.append('language', dto.language);
     }
-    formData.append('format', String(dto.format ?? false));
+
+    const params = {
+      format: dto.format ?? false,
+    };
 
     const url = `${this.config.ocr.url}/ocr/`;
 
@@ -47,6 +50,7 @@ export class AiOcrUseCase {
         this.httpService
           .post<any, FormData>(url, formData, {
             headers: formData.getHeaders(),
+            params,
             timeout: this.config.timeout,
           })
           .pipe(

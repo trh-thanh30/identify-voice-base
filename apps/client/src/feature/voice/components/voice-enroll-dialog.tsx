@@ -4,8 +4,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
-import { truncText } from "@/utils/trunc-text";
 import { useMemo } from "react";
 import type { UploadVoiceSchemaInput } from "../schemas/voice.schema";
 import type { CriminalRecordItem } from "../types/voice.types";
@@ -18,12 +16,6 @@ interface VoiceEnrollDialogProps {
   sourceFile: File | null;
   speakerItem?: VoiceIdentifyTwoItem | null;
   onEnrollSuccess?: (data: VoiceIdentifyTwoItem) => void;
-}
-
-function formatSeconds(value: number) {
-  const minutes = Math.floor(value / 60);
-  const seconds = Math.floor(value % 60);
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function getSourceFileKey(file: File | null) {
@@ -58,6 +50,9 @@ function getInitialFormValues(
     hometown: item?.hometown?.trim() ?? "",
     job: item?.job?.trim() ?? "",
     passport: item?.passport?.trim() ?? "",
+    age: typeof item?.age === "number" && item.age > 0 ? String(item.age) : "",
+    gender:
+      item?.gender === "MALE" || item?.gender === "FEMALE" ? item.gender : "",
     criminalRecords: Array.isArray(item?.criminal_record)
       ? item.criminal_record.filter(isCriminalRecordItem).map((record) => {
           const criminalRecord = record as CriminalRecordItem;
@@ -100,8 +95,6 @@ function VoiceEnrollDialogContent({
     getSourceFileKey(sourceFile),
   ].join("-");
 
-  const segments = speakerItem?.audio_segment ?? [];
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="h-[92vh] overflow-hidden p-0 sm:max-w-5xl xl:max-w-6xl">
@@ -112,50 +105,6 @@ function VoiceEnrollDialogContent({
 
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
             <div className="min-w-0 space-y-4 ">
-              {sourceFile ? (
-                <div className="rounded-lg border p-3 text-sm text-muted-foreground">
-                  <div className="flex min-w-0 items-center gap-1">
-                    <span className="shrink-0">File nguồn:</span>
-                    <span
-                      className="min-w-0 flex-1 truncate  font-medium "
-                      title={sourceFile.name}
-                    >
-                      {truncText(sourceFile.name, {
-                        maxLength: 100,
-                        breakWord: true,
-                      })}
-                    </span>
-                  </div>
-                </div>
-              ) : null}
-
-              {segments.length > 0 ? (
-                <div className="space-y-2 rounded-lg border p-3">
-                  <p className="text-sm font-medium">
-                    Các đoạn thời gian của người nói
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Thông tin tham khảo từ kết quả nhận dạng. Hệ thống không còn
-                    cắt audio phía trên trên khi đăng ký.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {segments.map((segment, index) => {
-                      return (
-                        <span
-                          key={`${segment.start}-${segment.end}-${index}`}
-                          className={cn(
-                            "inline-flex items-center rounded-md bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground",
-                          )}
-                        >
-                          {formatSeconds(segment.start)} -{" "}
-                          {formatSeconds(segment.end)}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-
               <VoiceUploadForm
                 key={formKey}
                 initialFile={sourceFile}

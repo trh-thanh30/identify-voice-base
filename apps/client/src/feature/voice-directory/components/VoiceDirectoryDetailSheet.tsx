@@ -70,6 +70,8 @@ function toUpdatePayload(values: UpdateVoiceDirectoryFormValues) {
     hometown: values.hometown?.trim() || undefined,
     job: values.job?.trim() || undefined,
     passport: values.passport?.trim() || undefined,
+    age: values.age && Number(values.age) > 0 ? Number(values.age) : undefined,
+    gender: values.gender || undefined,
     criminal_record: values.criminal_record.map((row) => ({
       case: row.case.trim(),
       year: Number.parseInt(row.year, 10),
@@ -124,6 +126,8 @@ export function VoiceDirectoryDetailSheet({
       hometown: "",
       job: "",
       passport: "",
+      age: "",
+      gender: "",
       criminal_record: [],
     },
   });
@@ -144,6 +148,14 @@ export function VoiceDirectoryDetailSheet({
       hometown: detail.hometown ?? "",
       job: detail.job ?? "",
       passport: detail.passport ?? "",
+      age:
+        typeof detail.age === "number" && detail.age > 0
+          ? String(detail.age)
+          : "",
+      gender:
+        detail.gender === "MALE" || detail.gender === "FEMALE"
+          ? detail.gender
+          : "",
       criminal_record: normalizeCriminalForForm(detail.criminal_record),
     });
     queueMicrotask(() => {
@@ -325,6 +337,39 @@ export function VoiceDirectoryDetailSheet({
                       {form.formState.errors.phone_number ? (
                         <p className="text-xs text-destructive">
                           {form.formState.errors.phone_number.message}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="vd-gender">Giới tính</Label>
+                      <select
+                        id="vd-gender"
+                        className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                        {...form.register("gender")}
+                      >
+                        <option value="">Chọn giới tính</option>
+                        <option value="MALE">Nam</option>
+                        <option value="FEMALE">Nữ</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="vd-age">Độ tuổi</Label>
+                      <Input
+                        id="vd-age"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        {...form.register("age", {
+                          onChange: (event) => {
+                            event.target.value = event.target.value.replace(
+                              /\D/g,
+                              "",
+                            );
+                          },
+                        })}
+                      />
+                      {form.formState.errors.age ? (
+                        <p className="text-xs text-destructive">
+                          {form.formState.errors.age.message}
                         </p>
                       ) : null}
                     </div>

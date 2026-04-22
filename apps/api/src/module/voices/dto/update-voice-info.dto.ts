@@ -65,7 +65,7 @@ export class UpdateVoiceInfoDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0, { message: 'Tuổi phải lớn hơn 0' })
+  @Min(1, { message: 'Tuổi phải lớn hơn 0' })
   age?: number;
 
   @ApiPropertyOptional()

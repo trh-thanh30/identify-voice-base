@@ -62,6 +62,8 @@ function getResetValues(
     hometown: initialValues?.hometown ?? "",
     job: initialValues?.job ?? "",
     passport: initialValues?.passport ?? "",
+    age: initialValues?.age ?? "",
+    gender: initialValues?.gender ?? "",
     criminalRecords: initialValues?.criminalRecords ?? [],
     audioFile: initialFile,
     start: initialStart,
@@ -154,6 +156,8 @@ export function VoiceUploadForm({
         hometown: values.hometown.trim(),
         job: values.job.trim(),
         passport: values.passport.trim(),
+        age: values.age ? Number(values.age) : undefined,
+        gender: values.gender || undefined,
         message: "Mới đăng ký",
         score: 1.0,
       });
@@ -221,6 +225,53 @@ export function VoiceUploadForm({
                     <FormLabel>CCCD</FormLabel>
                     <FormControl>
                       <Input placeholder="Nhập CCCD" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Giới tính</FormLabel>
+                    <FormControl>
+                      <select
+                        value={field.value}
+                        onChange={field.onChange}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                      >
+                        <option value="">Chọn giới tính</option>
+                        <option value="MALE">Nam</option>
+                        <option value="FEMALE">Nữ</option>
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="age"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tuổi</FormLabel>
+                    <FormControl>
+                      <Input
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="Nhập tuổi"
+                        name={field.name}
+                        ref={field.ref}
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={(event) => {
+                          field.onChange(event.target.value.replace(/\D/g, ""));
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

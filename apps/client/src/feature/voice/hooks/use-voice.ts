@@ -61,6 +61,8 @@ export function useUploadVoice(options?: UploadVoiceOptions) {
         hometown: values.hometown.trim(),
         job: values.job.trim(),
         passport: values.passport.trim(),
+        age: values.age.trim(),
+        gender: values.gender,
         criminal_record: criminalRecordPayload,
         file: values.audioFile,
       });

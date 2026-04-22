@@ -74,7 +74,7 @@ export class EnrollVoiceDto {
   })
   @Type(() => Number)
   @IsNumber()
-  @Min(0, {
+  @Min(1, {
     message: 'Vui lòng nhập tuổi số lớn hơn 0',
   })
   @IsOptional()

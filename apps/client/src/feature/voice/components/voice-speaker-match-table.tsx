@@ -27,7 +27,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { IdCard, Pencil, Phone, Play, Trash2, UserPlus } from "lucide-react";
+import { Pencil, Play, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
 
 import { VoiceDirectoryDetailSheet } from "@/feature/voice-directory/components/VoiceDirectoryDetailSheet";
@@ -37,7 +37,7 @@ import type { VoiceIdentifyItem } from "../types/voice.types";
 import { getVoiceScoreMeta } from "../utils/voice-score";
 import { VoiceAudioPlayer } from "./voice-audio-player";
 
-interface VoiceTop5MatchTableProps {
+interface VoiceSpeakerMatchTableProps {
   title: string;
   description?: string;
   items: VoiceIdentifyItem[];
@@ -107,55 +107,6 @@ function AgePill({ age }: { age?: number }) {
   );
 }
 
-function CccdPill({ value }: { value?: string }) {
-  if (!value?.trim()) {
-    return <span className="text-xs text-slate-400">-</span>;
-  }
-
-  return (
-    <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-      <IdCard className="size-3 text-blue-500" />
-      {value}
-    </span>
-  );
-}
-
-function PhonePill({ value }: { value?: string }) {
-  if (!value?.trim()) {
-    return <span className="text-xs text-slate-400">-</span>;
-  }
-
-  return (
-    <span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
-      <Phone className="size-3 text-green-500" />
-      {value}
-    </span>
-  );
-}
-
-function HeaderTooltip({
-  label,
-  description,
-  className,
-}: {
-  label: string;
-  description: string;
-  className?: string;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          className={`inline-block max-w-full cursor-help text-center leading-snug ${className ?? ""}`}
-        >
-          {label}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{description}</TooltipContent>
-    </Tooltip>
-  );
-}
-
 function TextCellTooltip({
   value,
   fallback = "-",
@@ -177,7 +128,7 @@ function TextCellTooltip({
   );
 }
 
-export function VoiceTop5MatchTable({
+export function VoiceSpeakerMatchTable({
   title,
   description,
   items,
@@ -186,7 +137,7 @@ export function VoiceTop5MatchTable({
   onDeleteItem,
   deletingUserId = null,
   onRegisterItem,
-}: VoiceTop5MatchTableProps) {
+}: VoiceSpeakerMatchTableProps) {
   const [audioDialog, setAudioDialog] = useState<AudioDialogState | null>(null);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -194,7 +145,6 @@ export function VoiceTop5MatchTable({
     Record<string, Partial<VoiceIdentifyItem>>
   >({});
 
-  const shouldShowAudioColumn = items.length > 0;
   const shouldShowQuickActions =
     typeof onDeleteItem === "function" || typeof onRegisterItem === "function";
   const shouldShowActionColumn =
@@ -235,73 +185,24 @@ export function VoiceTop5MatchTable({
               <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[5%] px-1 text-center whitespace-nowrap">
-                      <HeaderTooltip
-                        label="STT"
-                        description="Thứ tự kết quả khớp trong bảng."
-                      />
+                    <TableHead className="w-[11%] pr-3 pl-0 text-center whitespace-nowrap">
+                      Audio
                     </TableHead>
-                    {shouldShowAudioColumn ? (
-                      <TableHead className="w-[7%] pr-3 pl-0 text-center whitespace-nowrap">
-                        <HeaderTooltip
-                          label="Audio"
-                          description="Mở hộp thoại để phát audio của người nói này."
-                        />
-                      </TableHead>
-                    ) : null}
-                    <TableHead className="w-[15%] pl-2 whitespace-nowrap">
-                      <HeaderTooltip
-                        label="Họ và tên"
-                        description="Tên hồ sơ hoặc danh tính AI được ánh xạ với kết quả khớp."
-                        className="text-left"
-                      />
-                    </TableHead>
-                    <TableHead className="w-[9%] px-1 text-center whitespace-nowrap">
-                      <HeaderTooltip
-                        label="Giới tính"
-                        description="Giới tính đã lưu trong hồ sơ nhận dạng."
-                      />
-                    </TableHead>
-                    <TableHead className="w-[8%] px-1 text-center whitespace-nowrap">
-                      <HeaderTooltip
-                        label="Độ tuổi"
-                        description="Độ tuổi đã lưu trong hồ sơ nhận dạng."
-                      />
+                    <TableHead className="w-[24%] pl-2 whitespace-nowrap">
+                      Họ và tên
                     </TableHead>
                     <TableHead className="w-[14%] px-1 text-center whitespace-nowrap">
-                      <HeaderTooltip
-                        label="CCCD"
-                        description="Số căn cước công dân hoặc mã định danh của hồ sơ."
-                      />
+                      Giới tính
                     </TableHead>
                     <TableHead className="w-[12%] px-1 text-center whitespace-nowrap">
-                      <HeaderTooltip
-                        label="SĐT"
-                        description="Thông tin liên hệ lưu trong hồ sơ nhận dạng."
-                      />
+                      Độ tuổi
                     </TableHead>
-                    <TableHead className="w-[10%] px-1 text-center whitespace-nowrap">
-                      <HeaderTooltip
-                        label="Điểm số"
-                        description="Độ tương đồng giữa audio đầu vào và hồ sơ giọng nói đã lưu."
-                      />
+                    <TableHead className="w-[13%] px-1 text-center whitespace-nowrap">
+                      Điểm số
                     </TableHead>
                     {shouldShowActionColumn ? (
-                      <TableHead
-                        className={
-                          shouldShowQuickActions
-                            ? "w-32 px-2 text-center whitespace-nowrap"
-                            : "w-[8%] px-0.5 text-center whitespace-nowrap"
-                        }
-                      >
-                        <HeaderTooltip
-                          label="Thao tác"
-                          description={
-                            shouldShowQuickActions
-                              ? "Các thao tác nhanh cho kết quả nhận dạng này."
-                              : "Mở chi tiết hồ sơ để xem hoặc chỉnh sửa thông tin."
-                          }
-                        />
+                      <TableHead className="w-32 px-2 text-center whitespace-nowrap">
+                        Thao tác
                       </TableHead>
                     ) : null}
                   </TableRow>
@@ -323,60 +224,47 @@ export function VoiceTop5MatchTable({
                           item.matched_voice_id || displayItem.name || "unknown"
                         }-${index}`}
                       >
-                        <TableCell className="w-[5%] px-1 text-center align-middle text-sm">
-                          {index + 1}
+                        <TableCell className="w-[11%] pr-3 pl-0 text-center align-middle">
+                          {rowAudioUrl ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  size="icon-sm"
+                                  className="mx-auto size-8 rounded-full border border-slate-200 bg-white text-slate-950 shadow-lg shadow-slate-200/80 transition-colors duration-200 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600"
+                                  onClick={() =>
+                                    setAudioDialog({
+                                      audioUrl: rowAudioUrl,
+                                      fileName: audioLabel.fileName,
+                                      personName: audioLabel.personName,
+                                    })
+                                  }
+                                  aria-label={`Mở audio của ${audioLabel.personName}`}
+                                >
+                                  <Play className="size-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {`Phát audio của ${audioLabel.personName}`}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </TableCell>
-                        {shouldShowAudioColumn ? (
-                          <TableCell className="w-[7%] pr-3 pl-0 text-center align-middle">
-                            {rowAudioUrl ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    type="button"
-                                    size="icon-sm"
-                                    className="mx-auto size-8 rounded-full border border-slate-200 bg-white text-slate-950 shadow-lg shadow-slate-200/80 transition-colors duration-200 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-600"
-                                    onClick={() =>
-                                      setAudioDialog({
-                                        audioUrl: rowAudioUrl,
-                                        fileName: audioLabel.fileName,
-                                        personName: audioLabel.personName,
-                                      })
-                                    }
-                                    aria-label={`Mở audio của ${audioLabel.personName}`}
-                                  >
-                                    <Play className="size-3.5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  {`Phát audio của ${audioLabel.personName}`}
-                                </TooltipContent>
-                              </Tooltip>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                        ) : null}
-                        <TableCell className="w-[15%] min-w-0 pl-2 align-middle font-medium">
+                        <TableCell className="w-[24%] min-w-0 pl-2 align-middle font-medium">
                           <TextCellTooltip
                             value={displayItem.name}
                             className="truncate"
                           />
                         </TableCell>
-                        <TableCell className="w-[9%] px-1 align-middle text-center">
+                        <TableCell className="w-[14%] px-1 text-center align-middle">
                           <GenderPill gender={displayItem.gender} />
                         </TableCell>
-                        <TableCell className="w-[8%] px-1 align-middle text-center">
+                        <TableCell className="w-[12%] px-1 text-center align-middle">
                           <AgePill age={displayItem.age} />
                         </TableCell>
-                        <TableCell className="w-[14%] px-1 align-middle text-center">
-                          <CccdPill
-                            value={displayItem.citizen_identification}
-                          />
-                        </TableCell>
-                        <TableCell className="w-[12%] px-1 align-middle text-center">
-                          <PhonePill value={displayItem.phone_number} />
-                        </TableCell>
-                        <TableCell className="w-[10%] px-1 align-middle text-center">
+                        <TableCell className="w-[13%] px-1 text-center align-middle">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Badge
@@ -396,13 +284,7 @@ export function VoiceTop5MatchTable({
                           </Tooltip>
                         </TableCell>
                         {shouldShowActionColumn ? (
-                          <TableCell
-                            className={
-                              shouldShowQuickActions
-                                ? "w-32 px-2 text-center align-middle"
-                                : "w-[8%] px-0.5 text-center align-middle"
-                            }
-                          >
+                          <TableCell className="w-32 px-2 text-center align-middle">
                             <div className="flex items-center justify-center gap-2">
                               <Tooltip>
                                 <TooltipTrigger asChild>

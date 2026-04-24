@@ -29,51 +29,13 @@ import {
 } from "@/feature/translate/constants/translate.constants";
 import type { TranslateMode } from "@/feature/translate/types/translate.types";
 import {
+  animateProgressTo,
   AUTO_DETECT_ERROR_MESSAGE,
   formatError,
+  getDetectedLanguageCode,
   TRANSLATE_JOB_POLL_INTERVAL_MS,
-  TRANSLATE_PROGRESS_STEP_DELAY_MS,
+  wait,
 } from "@/utils";
-
-function wait(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-async function animateProgressTo(
-  fromProgress: number,
-  toProgress: number,
-  onProgress: (progress: number) => void,
-  shouldContinue: () => boolean,
-) {
-  const start = Math.max(0, Math.min(100, Math.round(fromProgress)));
-  const end = Math.max(start, Math.min(100, Math.round(toProgress)));
-
-  for (let progress = start + 1; progress <= end; progress += 1) {
-    if (!shouldContinue()) return;
-
-    onProgress(progress);
-    await wait(TRANSLATE_PROGRESS_STEP_DELAY_MS);
-  }
-}
-
-function getDetectedLanguageCode(
-  value: string | string[] | undefined,
-): string | null {
-  if (Array.isArray(value)) {
-    return value.find((item) => item.trim())?.trim() ?? null;
-  }
-
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  return (
-    value
-      .split(",")
-      .map((item) => item.trim())
-      .find(Boolean) ?? null
-  );
-}
 
 export default function TranslateLive() {
   const translateRequestIdRef = useRef(0);

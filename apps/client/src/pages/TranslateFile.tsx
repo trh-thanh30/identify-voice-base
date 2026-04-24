@@ -41,30 +41,12 @@ import {
   getTranscriptText,
 } from "@/feature/translate/utils/translate-file.utils";
 import {
+  animateProgressTo,
   formatError,
   TRANSLATE_JOB_POLL_INTERVAL_MS,
-  TRANSLATE_PROGRESS_STEP_DELAY_MS,
+  wait,
+  type ProcessingStep,
 } from "@/utils";
-
-type ProcessingStep = "idle" | "extracting" | "translating";
-
-function wait(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-async function animateProgressTo(
-  fromProgress: number,
-  toProgress: number,
-  onProgress: (progress: number) => void,
-) {
-  const start = Math.max(0, Math.min(100, Math.round(fromProgress)));
-  const end = Math.max(start, Math.min(100, Math.round(toProgress)));
-
-  for (let progress = start + 1; progress <= end; progress += 1) {
-    onProgress(progress);
-    await wait(TRANSLATE_PROGRESS_STEP_DELAY_MS);
-  }
-}
 
 export default function TranslateFile() {
   const translateFormRef = useRef<HTMLDivElement | null>(null);

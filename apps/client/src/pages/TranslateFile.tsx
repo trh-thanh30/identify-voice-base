@@ -350,7 +350,12 @@ export default function TranslateFile() {
         <div ref={translateFormRef} className="grid gap-4 lg:grid-cols-2">
           <Card className="rounded-md">
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle>Văn bản nguồn</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Văn bản nguồn
+                <div className="shrink-0 text-right text-sm text-muted-foreground border-l border-l-gray-200 pl-2">
+                  {sourceText.length} ký tự
+                </div>
+              </CardTitle>
 
               <div className="flex flex-wrap gap-2 sm:justify-end">
                 <Button

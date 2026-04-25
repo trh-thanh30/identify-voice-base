@@ -117,6 +117,12 @@ export default function TranslateFile() {
     setErrorMessage(null);
     setTranslatedText("");
 
+    const loadingToastId = toast.loading(
+      file.kind === "audio"
+        ? "Đang nhận dạng audio bằng S2T..."
+        : "Đang trích xuất văn bản bằng OCR...",
+    );
+
     try {
       if (file.kind === "audio") {
         const result = await translateApi.speechToText({
@@ -126,7 +132,9 @@ export default function TranslateFile() {
         const text = getTranscriptText(result.transcript);
 
         setSourceText(text);
-        toast.success("Đã nhận dạng audio.");
+        toast.success("Đã nhận dạng audio.", {
+          id: loadingToastId,
+        });
         return text;
       }
 
@@ -137,12 +145,16 @@ export default function TranslateFile() {
       const text = getOcrText(result.results);
 
       setSourceText(text);
-      toast.success("Đã trích xuất văn bản.");
+      toast.success("Đã trích xuất văn bản.", {
+        id: loadingToastId,
+      });
       return text;
     } catch (error) {
       const message = formatError(error);
       setErrorMessage(message);
-      toast.error(message);
+      toast.error(message, {
+        id: loadingToastId,
+      });
       return "";
     } finally {
       setProcessingStep("idle");

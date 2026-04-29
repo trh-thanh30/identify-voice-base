@@ -50,14 +50,6 @@ export const OCR_LANGUAGES = [
   { value: "ko", label: "Tiếng Hàn" },
 ] as const;
 
-export const LIVE_TRANSLATE_SOURCE_LANGUAGE_OPTIONS = [
-  {
-    value: AUTO_LANGUAGE,
-    label: "Tự động nhận diện",
-  },
-  ...OCR_LANGUAGES,
-] as const;
-
 export const TRANSLATION_LANGUAGES = [
   { value: "vi", label: "Tiếng Việt" },
   { value: "en", label: "Tiếng Anh" },
@@ -97,4 +89,12 @@ export const TRANSLATION_LANGUAGES = [
   { value: "kk", label: "Tiếng Kazakh" },
   { value: "mn", label: "Tiếng Mông Cổ" },
   { value: "ug", label: "Tiếng Duy Ngô Nhĩ" },
+] as const;
+
+export const LIVE_TRANSLATE_SOURCE_LANGUAGE_OPTIONS = [
+  {
+    value: AUTO_LANGUAGE,
+    label: "Tự động nhận diện",
+  },
+  ...TRANSLATION_LANGUAGES,
 ] as const;

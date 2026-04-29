@@ -37,9 +37,29 @@ import {
   wait,
 } from "@/utils";
 
+function normalizeLiveDetectedLanguage(language: string) {
+  const normalizedLanguage = language.trim();
+  const lowerLanguage = normalizedLanguage.toLowerCase();
+
+  if (["zh-cn", "zh-hans", "cmn"].includes(lowerLanguage)) {
+    return "zh";
+  }
+
+  if (["zh-tw", "zh-hk", "zh-hant"].includes(lowerLanguage)) {
+    return "zh-Hant";
+  }
+
+  return (
+    LIVE_TRANSLATE_SOURCE_LANGUAGE_OPTIONS.find(
+      (option) => option.value.toLowerCase() === lowerLanguage,
+    )?.value ?? null
+  );
+}
+
 export default function TranslateLive() {
   const translateRequestIdRef = useRef(0);
   const translateProgressRef = useRef(0);
+  const sourceLanguageRef = useRef(AUTO_LANGUAGE);
   const [sourceLanguage, setSourceLanguage] = useState(AUTO_LANGUAGE);
   const [targetLanguage, setTargetLanguage] = useState("en");
   const [mode, setMode] = useState<TranslateMode>("translate");
@@ -56,9 +76,14 @@ export default function TranslateLive() {
     setTranslateProgress(progress);
   }, []);
 
+  const updateSourceLanguage = useCallback((language: string) => {
+    sourceLanguageRef.current = language;
+    setSourceLanguage(language);
+  }, []);
+
   const resetPage = () => {
     translateRequestIdRef.current += 1;
-    setSourceLanguage(AUTO_LANGUAGE);
+    updateSourceLanguage(AUTO_LANGUAGE);
     setTargetLanguage("en");
     setMode("translate");
     setSourceText("");
@@ -89,7 +114,7 @@ export default function TranslateLive() {
       setTranslatedText("");
 
       try {
-        if (sourceLanguage === AUTO_LANGUAGE) {
+        if (sourceLanguageRef.current === AUTO_LANGUAGE) {
           await animateProgressTo(
             translateProgressRef.current,
             3,
@@ -109,6 +134,13 @@ export default function TranslateLive() {
 
           if (!nextDetectedLanguage) {
             throw new Error(AUTO_DETECT_ERROR_MESSAGE);
+          }
+
+          const normalizedDetectedLanguage =
+            normalizeLiveDetectedLanguage(nextDetectedLanguage);
+
+          if (normalizedDetectedLanguage) {
+            updateSourceLanguage(normalizedDetectedLanguage);
           }
         }
 
@@ -179,7 +211,7 @@ export default function TranslateLive() {
         }
       }
     },
-    [sourceLanguage, updateTranslateProgress],
+    [updateSourceLanguage, updateTranslateProgress],
   );
 
   useEffect(() => {
@@ -244,7 +276,7 @@ export default function TranslateLive() {
               </Label>
               <Select
                 value={sourceLanguage}
-                onValueChange={setSourceLanguage}
+                onValueChange={updateSourceLanguage}
                 disabled={isTranslating}
               >
                 <SelectTrigger

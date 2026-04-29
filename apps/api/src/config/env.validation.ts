@@ -10,6 +10,7 @@ export const envSchema = z.object({
   // Application
   APP_NAME: z.string().default('nest-basic-prisma'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  API_BODY_LIMIT: z.string().default('25mb'),
 
   // Database
   DB_HOST: z.string().default('localhost'),

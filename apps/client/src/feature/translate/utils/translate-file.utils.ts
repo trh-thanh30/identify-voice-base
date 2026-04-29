@@ -26,6 +26,7 @@ const AUDIO_MIME_TYPES = [
   "audio/wave",
   "audio/vnd.wave",
   "audio/mp4",
+  "video/mp4",
   "audio/x-m4a",
   "audio/webm",
   "audio/ogg",

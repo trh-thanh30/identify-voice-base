@@ -6,6 +6,7 @@ import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  PayloadTooLargeError,
   RateLimitError,
   UnauthorizedError,
   ValidationError,
@@ -149,6 +150,16 @@ export class AllExceptionsFilter
       }
 
       error = new BadRequestError(message, code, details);
+    } else if (this.isPayloadTooLargeError(exception)) {
+      status = HttpStatus.PAYLOAD_TOO_LARGE;
+      error = new PayloadTooLargeError(
+        'Request body vượt quá giới hạn cho phép',
+        'PAYLOAD_TOO_LARGE',
+        {
+          limit: (exception as { limit?: number }).limit,
+          length: (exception as { length?: number }).length,
+        },
+      );
     } else if (exception instanceof Error) {
       // Handle generic Error objects
       error = new InternalServerError(
@@ -198,5 +209,21 @@ export class AllExceptionsFilter
         details: error.details,
       });
     }
+  }
+
+  private isPayloadTooLargeError(exception: unknown): boolean {
+    if (!exception || typeof exception !== 'object') return false;
+
+    const error = exception as {
+      type?: string;
+      status?: number;
+      statusCode?: number;
+    };
+
+    return (
+      error.type === 'entity.too.large' ||
+      error.status === HttpStatus.PAYLOAD_TOO_LARGE ||
+      error.statusCode === HttpStatus.PAYLOAD_TOO_LARGE
+    );
   }
 }

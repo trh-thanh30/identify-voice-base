@@ -17,6 +17,8 @@ export interface OcrRequest {
 export interface SpeechToTextRequest {
   file: File;
   language?: string;
+  returnTimestamp?: boolean;
+  denoiseAudio?: boolean;
 }
 
 export interface TranslateTextRequest {
@@ -65,8 +67,11 @@ export const translateApi = {
     if (payload.language) {
       formData.append("language", payload.language);
     }
-    formData.append("return_timestamp", "false");
-    formData.append("denoise_audio", "false");
+    formData.append(
+      "return_timestamp",
+      String(payload.returnTimestamp ?? false),
+    );
+    formData.append("denoise_audio", String(payload.denoiseAudio ?? false));
 
     const response = await axiosInstance.post<
       ApiResponse<SpeechToTextResponse>

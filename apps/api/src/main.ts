@@ -32,8 +32,9 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from '@/app.module';
 import { appConfig } from '@/config';
 // external
-import cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
+import { json, urlencoded } from 'express';
 
 // bootstrap the application
 async function bootstrap() {
@@ -46,11 +47,30 @@ async function bootstrap() {
   try {
     const app = await NestFactory.create<NestExpressApplication>(AppModule, {
       bufferLogs: true,
-      rawBody: true,
+      bodyParser: false,
     });
 
     // Get app config
     const appCfg = app.get<ConfigType<typeof appConfig>>(appConfig.KEY);
+    const bodyLimit = process.env.API_BODY_LIMIT ?? '25mb';
+
+    app.use(
+      json({
+        limit: bodyLimit,
+        verify: (req, _res, buf) => {
+          (req as any).rawBody = buf;
+        },
+      }),
+    );
+    app.use(
+      urlencoded({
+        extended: true,
+        limit: bodyLimit,
+        verify: (req, _res, buf) => {
+          (req as any).rawBody = buf;
+        },
+      }),
+    );
 
     // Set cookie parser
     app.use(cookieParser());

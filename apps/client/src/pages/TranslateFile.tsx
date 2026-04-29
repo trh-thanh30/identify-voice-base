@@ -55,6 +55,8 @@ export default function TranslateFile() {
     useState<SelectedTranslateFile | null>(null);
   const [sourceLanguage, setSourceLanguage] = useState(AUTO_LANGUAGE);
   const [targetLanguage, setTargetLanguage] = useState("en");
+  const [returnTimestamp, setReturnTimestamp] = useState(false);
+  const [denoiseAudio, setDenoiseAudio] = useState(false);
   const [mode, setMode] = useState<TranslateMode>("translate");
   const [sourceText, setSourceText] = useState("");
   const [translatedText, setTranslatedText] = useState("");
@@ -102,6 +104,8 @@ export default function TranslateFile() {
     setSelectedFile(null);
     setSourceLanguage(AUTO_LANGUAGE);
     setTargetLanguage("en");
+    setReturnTimestamp(false);
+    setDenoiseAudio(false);
     setMode("translate");
     setProcessingStep("idle");
     resetResult();
@@ -110,6 +114,8 @@ export default function TranslateFile() {
   const extractText = async (
     file = selectedFile,
     language = sourceLanguage,
+    shouldReturnTimestamp = returnTimestamp,
+    shouldDenoiseAudio = denoiseAudio,
   ) => {
     if (!file || processingStep !== "idle") return "";
 
@@ -128,6 +134,8 @@ export default function TranslateFile() {
         const result = await translateApi.speechToText({
           file: file.file,
           language: language === AUTO_LANGUAGE ? undefined : language,
+          returnTimestamp: shouldReturnTimestamp,
+          denoiseAudio: shouldDenoiseAudio,
         });
         const text = getTranscriptText(result.transcript);
 
@@ -230,8 +238,15 @@ export default function TranslateFile() {
     language = sourceLanguage,
     translateMode = mode,
     translateTargetLanguage = targetLanguage,
+    shouldReturnTimestamp = returnTimestamp,
+    shouldDenoiseAudio = denoiseAudio,
   ) => {
-    const extractedText = await extractText(file, language);
+    const extractedText = await extractText(
+      file,
+      language,
+      shouldReturnTimestamp,
+      shouldDenoiseAudio,
+    );
     if (!extractedText.trim()) return;
 
     await translateText(extractedText, translateMode, translateTargetLanguage);
@@ -243,11 +258,32 @@ export default function TranslateFile() {
 
     setSelectedFile(nextFile);
     setSourceLanguage(nextSourceLanguage);
+    setReturnTimestamp(false);
+    setDenoiseAudio(false);
     resetResult();
 
     if (nextFile) {
+      if (nextFile.kind === "audio") {
+        void extractText(nextFile, nextSourceLanguage, false, false);
+        return;
+      }
+
       void processFile(nextFile, nextSourceLanguage, mode, targetLanguage);
     }
+  };
+
+  const handleReturnTimestampChange = (value: string) => {
+    setReturnTimestamp(value === "true");
+    setSourceText("");
+    setTranslatedText("");
+    updateTranslateProgress(0);
+  };
+
+  const handleDenoiseAudioChange = (value: string) => {
+    setDenoiseAudio(value === "true");
+    setSourceText("");
+    setTranslatedText("");
+    updateTranslateProgress(0);
   };
 
   const handleModeChange = (value: string) => {
@@ -301,8 +337,8 @@ export default function TranslateFile() {
 
       {hasFile ? (
         <Card className="rounded-md">
-          <CardContent className="flex flex-col gap-4 py-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:max-w-2xl">
+          <CardContent className="flex flex-col gap-4 py-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="space-y-2">
                 <Label htmlFor="translate-source-language">
                   {isAudio ? "Ngôn ngữ audio" : "Ngôn ngữ OCR"}
@@ -328,6 +364,50 @@ export default function TranslateFile() {
                 </Select>
               </div>
 
+              {isAudio ? (
+                <div className="space-y-2">
+                  <Label htmlFor="translate-return-timestamp">Timestamp</Label>
+                  <Select
+                    value={String(returnTimestamp)}
+                    onValueChange={handleReturnTimestampChange}
+                    disabled={isBusy}
+                  >
+                    <SelectTrigger
+                      id="translate-return-timestamp"
+                      className="w-full"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="false">Không trả timestamp</SelectItem>
+                      <SelectItem value="true">Trả timestamp</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+
+              {isAudio ? (
+                <div className="space-y-2">
+                  <Label htmlFor="translate-denoise-audio">Khử nhiễu</Label>
+                  <Select
+                    value={String(denoiseAudio)}
+                    onValueChange={handleDenoiseAudioChange}
+                    disabled={isBusy}
+                  >
+                    <SelectTrigger
+                      id="translate-denoise-audio"
+                      className="w-full"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="false">Không khử nhiễu</SelectItem>
+                      <SelectItem value="true">Khử nhiễu</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+
               <div className="space-y-2">
                 <Label htmlFor="translate-target-language">Dịch sang</Label>
                 <Select
@@ -352,7 +432,7 @@ export default function TranslateFile() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center justify-end gap-3">
               <Tabs value={mode} onValueChange={handleModeChange}>
                 <TabsList>
                   <TabsTrigger value="translate" disabled={isBusy}>
@@ -371,7 +451,11 @@ export default function TranslateFile() {
                 variant="outline"
                 className="shadow-lg shadow-slate-200/80 transition-shadow hover:shadow-xl hover:shadow-slate-300/80"
                 disabled={!selectedFile || isBusy}
-                onClick={() => void processFile()}
+                onClick={() =>
+                  selectedFile?.kind === "audio"
+                    ? void extractText()
+                    : void processFile()
+                }
               >
                 {processingStep === "extracting" ? (
                   <LoaderCircle className="mr-2 size-4 animate-spin" />

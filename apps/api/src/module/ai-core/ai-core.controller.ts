@@ -110,6 +110,11 @@ export class AiCoreController {
           type: 'boolean',
           default: false,
         },
+        denoise_audio: {
+          type: 'boolean',
+          default: false,
+          description: 'true: yêu cầu AI CORE khử nhiễu audio trước khi S2T',
+        },
       },
     },
   })

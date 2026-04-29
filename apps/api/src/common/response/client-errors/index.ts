@@ -27,3 +27,6 @@ export { ValidationError } from './unprocessable-entity';
 
 // goi api qua gioi han
 export { RateLimitError } from './too-many-requests';
+
+// request body qua lon
+export { PayloadTooLargeError } from './payload-too-large';

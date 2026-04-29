@@ -8,6 +8,7 @@ export const AUDIO_EXTENSIONS = [
   ".mp3",
   ".wav",
   ".m4a",
+  ".mp4",
   ".webm",
   ".ogg",
   ".flac",
@@ -26,7 +27,7 @@ export const IMAGE_EXTENSIONS = [
 ] as const;
 
 export const ACCEPTED_TRANSLATE_FILE_INPUT =
-  "audio/*,image/*,.pdf,.docx,.txt,.mp3,.wav,.m4a,.webm,.ogg,.flac";
+  "audio/*,video/mp4,image/*,.pdf,.docx,.txt,.mp3,.wav,.m4a,.mp4,.webm,.ogg,.flac";
 
 export const SPEECH_LANGUAGES = [
   { value: AUTO_LANGUAGE, label: "Tự động" },

@@ -1,7 +1,7 @@
 import {
+  BarChart3,
   BookOpenText,
   BookUser,
-  BarChart3,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -107,6 +107,11 @@ const navigation: NavItem[] = [
     title: "Dịch đa ngôn ngữ",
     icon: Languages,
     children: [
+      {
+        title: "Thống kê bản dịch",
+        url: ROUTES.ADMIN_TRANSLATIONS,
+        icon: BarChart3,
+      },
       { title: "Dịch trực tiếp", url: ROUTES.TRANSLATE_LIVE, icon: Languages },
       { title: "Dịch tệp tin", url: ROUTES.TRANSLATE_FILE, icon: FileText },
     ],
@@ -123,11 +128,6 @@ const adminNavigation: NavItem[] = [
     title: "Quản lý tài khoản",
     url: ROUTES.ADMIN_ACCOUNTS,
     icon: ShieldCheck,
-  },
-  {
-    title: "Thống kê bản dịch",
-    url: ROUTES.ADMIN_TRANSLATIONS,
-    icon: BarChart3,
   },
 ];
 

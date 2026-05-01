@@ -1,6 +1,7 @@
 import { PrismaService } from '@/database/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import dayjs from 'dayjs';
 import { TranslationHistoryFilterDto } from '../dto/translation-history-filter.dto';
 
 @Injectable()
@@ -92,13 +93,9 @@ export class TranslationHistoryRepository {
   }
 
   private getTodayRange() {
-    const now = new Date();
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(now);
-    end.setHours(23, 59, 59, 999);
-
-    return { gte: start, lte: end };
+    return {
+      gte: dayjs().startOf('day').toDate(),
+      lte: dayjs().endOf('day').toDate(),
+    };
   }
 }

@@ -1,5 +1,6 @@
 import { OCR, S2T, TRANSLATE } from '@/common/auth/permissions';
 import { ApiSuccess, Permissions, RawResponse } from '@/common/decorators';
+import { User } from '@/common/decorators/user.decorator';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import {
@@ -160,8 +161,11 @@ export class AiCoreController {
   })
   @ApiSuccess('Dịch văn bản thành công')
   @Permissions([TRANSLATE.RUN])
-  async translate(@Body() dto: TranslateRequestDto) {
-    return this.aiCoreService.translate(dto);
+  async translate(
+    @Body() dto: TranslateRequestDto,
+    @User('id') userId: string,
+  ) {
+    return this.aiCoreService.translate(dto, userId);
   }
 
   @Post('translate/jobs')
@@ -172,8 +176,11 @@ export class AiCoreController {
   })
   @ApiSuccess('Tạo job dịch thành công')
   @Permissions([TRANSLATE.RUN])
-  async createTranslateJob(@Body() dto: TranslateRequestDto) {
-    return this.translateJobService.createJob('translate', dto);
+  async createTranslateJob(
+    @Body() dto: TranslateRequestDto,
+    @User('id') userId: string,
+  ) {
+    return this.translateJobService.createJob('translate', dto, userId);
   }
 
   @Get('translate/jobs/:jobId')
@@ -291,8 +298,11 @@ export class AiCoreController {
   })
   @ApiSuccess('Dịch và tóm tắt văn bản thành công')
   @Permissions([TRANSLATE.RUN])
-  async translateSummarize(@Body() dto: TranslateRequestDto) {
-    return this.aiCoreService.translateSummarize(dto);
+  async translateSummarize(
+    @Body() dto: TranslateRequestDto,
+    @User('id') userId: string,
+  ) {
+    return this.aiCoreService.translateSummarize(dto, userId);
   }
 
   @Post('translate-summarize/jobs')
@@ -303,7 +313,10 @@ export class AiCoreController {
   })
   @ApiSuccess('Tạo job dịch và tóm tắt thành công')
   @Permissions([TRANSLATE.RUN])
-  async createTranslateSummarizeJob(@Body() dto: TranslateRequestDto) {
-    return this.translateJobService.createJob('summarize', dto);
+  async createTranslateSummarizeJob(
+    @Body() dto: TranslateRequestDto,
+    @User('id') userId: string,
+  ) {
+    return this.translateJobService.createJob('summarize', dto, userId);
   }
 }

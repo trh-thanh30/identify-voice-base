@@ -1,4 +1,5 @@
 import { RedisService } from '@/database/redis/redis.service';
+import { TranslationHistoryService } from '@/module/translation-history/service/translation-history.service';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { TranslateRequestDto } from '../dto/translate-request.dto';
@@ -27,9 +28,14 @@ export class AiTranslateJobService {
   constructor(
     private readonly redisService: RedisService,
     private readonly translateUseCase: AiTranslateUseCase,
+    private readonly translationHistoryService: TranslationHistoryService,
   ) {}
 
-  async createJob(mode: TranslateJobMode, dto: TranslateRequestDto) {
+  async createJob(
+    mode: TranslateJobMode,
+    dto: TranslateRequestDto,
+    userId?: string,
+  ) {
     const jobId = randomUUID();
     const now = new Date().toISOString();
 
@@ -42,7 +48,7 @@ export class AiTranslateJobService {
       updated_at: now,
     });
 
-    void this.runJob(jobId, mode, dto);
+    void this.runJob(jobId, mode, dto, userId);
 
     return { job_id: jobId };
   }
@@ -63,6 +69,7 @@ export class AiTranslateJobService {
     jobId: string,
     mode: TranslateJobMode,
     dto: TranslateRequestDto,
+    userId?: string,
   ) {
     try {
       await this.patchJob(jobId, {
@@ -92,6 +99,7 @@ export class AiTranslateJobService {
             );
 
       await progressUpdate;
+      await this.recordTranslation(dto, result, mode, userId);
 
       await this.patchJob(jobId, {
         status: 'completed',
@@ -133,5 +141,31 @@ export class AiTranslateJobService {
 
   private getJobKey(jobId: string) {
     return `ai-core:translate-job:${jobId}`;
+  }
+
+  private async recordTranslation(
+    dto: TranslateRequestDto,
+    result: unknown,
+    mode: TranslateJobMode,
+    userId?: string,
+  ) {
+    if (!userId || !result || typeof result !== 'object') {
+      return;
+    }
+
+    const translatedText = (result as Record<string, unknown>).translated_text;
+
+    if (typeof translatedText !== 'string') {
+      return;
+    }
+
+    await this.translationHistoryService.recordTranslation({
+      userId,
+      sourceText: dto.source_text,
+      translatedText,
+      sourceLang: dto.source_lang,
+      targetLang: dto.target_lang,
+      mode,
+    });
   }
 }

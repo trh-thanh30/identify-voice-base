@@ -1,6 +1,7 @@
 import {
   BookOpenText,
   BookUser,
+  BarChart3,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -122,6 +123,11 @@ const adminNavigation: NavItem[] = [
     title: "Quản lý tài khoản",
     url: ROUTES.ADMIN_ACCOUNTS,
     icon: ShieldCheck,
+  },
+  {
+    title: "Thống kê bản dịch",
+    url: ROUTES.ADMIN_TRANSLATIONS,
+    icon: BarChart3,
   },
 ];
 
@@ -469,7 +475,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenu className="gap-1 px-3">
             {state === "expanded" ? (
               <div className="px-2 text-[10px] font-semibold text-nowrap uppercase tracking-wider text-gray-400">
-                Quản lý tài khoản
+                Quản trị hệ thống
               </div>
             ) : null}
             {adminNavigation.map((item) => {

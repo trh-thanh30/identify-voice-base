@@ -12,6 +12,10 @@ export class TranslateRequestDto {
   @IsOptional()
   @IsIn(TRANSLATION_LANGUAGES)
   target_lang?: TranslationLanguage = 'en';
+
+  @IsOptional()
+  @IsString()
+  source_lang?: string;
 }
 
 export class DetectLanguageRequestDto {

@@ -6,6 +6,7 @@ import {
   LoaderCircle,
   RotateCcw,
   Sparkles,
+  XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -24,8 +25,8 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { translateApi } from "@/feature/translate/api/translate.api";
 import type { TranslateExportFormat } from "@/feature/translate/api/translate.api";
+import { translateApi } from "@/feature/translate/api/translate.api";
 import { TranslateAudioPreview } from "@/feature/translate/components/translate-audio-preview";
 import { TranslateFileDropzone } from "@/feature/translate/components/translate-file-dropzone";
 import {
@@ -71,6 +72,7 @@ function getLanguageLabel(languageCode: string) {
 export default function TranslateFile() {
   const translateFormRef = useRef<HTMLDivElement | null>(null);
   const translateProgressRef = useRef(0);
+  const translateRequestIdRef = useRef(0);
   const [selectedFile, setSelectedFile] =
     useState<SelectedTranslateFile | null>(null);
   const [sourceLanguage, setSourceLanguage] = useState(AUTO_LANGUAGE);
@@ -160,6 +162,7 @@ export default function TranslateFile() {
   };
 
   const resetPage = () => {
+    translateRequestIdRef.current += 1;
     setSelectedFile(null);
     setSourceLanguage(AUTO_LANGUAGE);
     setTargetLanguage("en");
@@ -242,9 +245,13 @@ export default function TranslateFile() {
     const normalizedText = text.trim();
     if (!normalizedText || processingStep !== "idle") return;
 
+    const requestId = translateRequestIdRef.current + 1;
+    translateRequestIdRef.current = requestId;
     setProcessingStep("translating");
     updateTranslateProgress(0);
     setErrorMessage(null);
+
+    const isCurrentRequest = () => requestId === translateRequestIdRef.current;
 
     try {
       const job =
@@ -252,21 +259,31 @@ export default function TranslateFile() {
           ? await translateApi.createTranslateSummarizeJob({
               sourceText: normalizedText,
               targetLang: translateTargetLanguage,
+              sourceLang:
+                sourceLanguage === AUTO_LANGUAGE ? undefined : sourceLanguage,
             })
           : await translateApi.createTranslateJob({
               sourceText: normalizedText,
               targetLang: translateTargetLanguage,
+              sourceLang:
+                sourceLanguage === AUTO_LANGUAGE ? undefined : sourceLanguage,
             });
 
-      while (true) {
+      if (!isCurrentRequest()) return;
+
+      while (isCurrentRequest()) {
         const jobStatus = await translateApi.getTranslateJob(job.job_id);
+
+        if (!isCurrentRequest()) return;
 
         if (jobStatus.status === "completed") {
           await animateProgressTo(
             translateProgressRef.current,
             100,
             updateTranslateProgress,
+            isCurrentRequest,
           );
+          if (!isCurrentRequest()) return;
           setTranslatedText(jobStatus.result?.translated_text ?? "");
           break;
         }
@@ -275,7 +292,10 @@ export default function TranslateFile() {
           translateProgressRef.current,
           jobStatus.progress,
           updateTranslateProgress,
+          isCurrentRequest,
         );
+
+        if (!isCurrentRequest()) return;
 
         if (jobStatus.status === "failed") {
           throw new Error(jobStatus.error ?? "Không thể dịch nội dung.");
@@ -284,18 +304,32 @@ export default function TranslateFile() {
         await wait(TRANSLATE_JOB_POLL_INTERVAL_MS);
       }
 
+      if (!isCurrentRequest()) return;
+
       toast.success(
         translateMode === "summarize"
           ? "Đã dịch và tóm tắt nội dung."
           : "Đã dịch nội dung.",
       );
     } catch (error) {
+      if (!isCurrentRequest()) return;
       const message = formatError(error);
       setErrorMessage(message);
       toast.error(message);
     } finally {
-      setProcessingStep("idle");
+      if (isCurrentRequest()) {
+        setProcessingStep("idle");
+      }
     }
+  };
+
+  const cancelTranslate = () => {
+    if (processingStep !== "translating") return;
+
+    translateRequestIdRef.current += 1;
+    setProcessingStep("idle");
+    updateTranslateProgress(0);
+    toast.info("Đã hủy tiến trình dịch.");
   };
 
   const handleSelectedFileChange = (nextFile: SelectedTranslateFile | null) => {
@@ -308,23 +342,17 @@ export default function TranslateFile() {
     setDenoiseAudio(false);
     resetResult();
 
-    if (nextFile) {
+    if (nextFile && nextFile.kind !== "audio") {
       void extractText(nextFile, nextSourceLanguage, false, false);
     }
   };
 
   const handleReturnTimestampChange = (value: string) => {
     setReturnTimestamp(value === "true");
-    setSourceText("");
-    setTranslatedText("");
-    updateTranslateProgress(0);
   };
 
   const handleDenoiseAudioChange = (value: string) => {
     setDenoiseAudio(value === "true");
-    setSourceText("");
-    setTranslatedText("");
-    updateTranslateProgress(0);
   };
 
   const handleModeChange = (value: string) => {
@@ -605,7 +633,18 @@ export default function TranslateFile() {
                 placeholder="Nội dung trích xuất sẽ hiển thị tại đây."
                 className="h-94 min-h-94 max-h-94 resize-none overflow-y-auto p-4 text-sm leading-6"
               />
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                {processingStep === "translating" ? (
+                  <Button
+                    className="w-fit"
+                    type="button"
+                    variant="outline"
+                    onClick={cancelTranslate}
+                  >
+                    <XCircle className="mr-2 size-4" />
+                    Hủy dịch
+                  </Button>
+                ) : null}
                 <Button
                   className="w-fit"
                   type="button"
@@ -687,6 +726,14 @@ export default function TranslateFile() {
                       {translateProgress}%
                     </span>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={cancelTranslate}
+                  >
+                    <XCircle className="mr-1 size-4" />
+                    Hủy dịch
+                  </Button>
                 </div>
               ) : translatedText ? (
                 <div className="h-94 min-h-94 max-h-94 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-6">

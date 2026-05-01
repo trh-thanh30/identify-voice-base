@@ -134,7 +134,7 @@ export function AdminAccountDetailSheet({
                 <InfoRow label="Email" value={detail.email} />
                 <InfoRow
                   label="Username"
-                  value={detail.username || "Chưa đặt username"}
+                  value={detail.username || "Chưa đặt tên đăng nhập"}
                 />
                 <InfoRow label="Role" value={getRoleLabel(detail.role)} />
                 <InfoRow

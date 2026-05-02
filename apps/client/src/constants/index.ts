@@ -53,6 +53,18 @@ export const QUERY_KEYS = {
     sessionAudio: (sessionId: string) =>
       ["voice", "directory", "session", sessionId] as const,
   },
+  translate: {
+    history: {
+      list: (params: {
+        page: number;
+        pageSize: 10 | 25 | 50;
+        fromDate: string;
+        toDate: string;
+        sourceLang: string;
+        targetLang: string;
+      }) => ["translate", "history", "list", params] as const,
+    },
+  },
 } as const;
 
 export const ROUTES = {
@@ -61,6 +73,7 @@ export const ROUTES = {
   HOME: "/",
   ADMIN: "/admin",
   ADMIN_ACCOUNTS: "/admin/accounts",
+  ADMIN_TRANSLATIONS: "/admin/translations",
   VOICE: "/voice",
   TRANSLATE: "/translate",
   TRANSLATE_LIVE: "/translate/live",

@@ -1,5 +1,6 @@
 import { AiCoreService } from '@/module/ai-core/service/ai-core.service';
 import { AuthTokenService } from '@/module/auth/service/auth-token.service';
+import { TranslationHistoryModule } from '@/module/translation-history/translation-history.module';
 import { RedisModule } from '@/database/redis/redis.module';
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
@@ -18,7 +19,7 @@ import { AiTranslateUseCase } from './usecase/ai-translate.usecase';
 import { UploadVoiceUseCase } from './usecase/ai-upload-voice.usecase';
 
 @Module({
-  imports: [HttpModule, ConfigModule, RedisModule],
+  imports: [HttpModule, ConfigModule, RedisModule, TranslationHistoryModule],
   controllers: [AiCoreController],
   providers: [
     AiCoreService,

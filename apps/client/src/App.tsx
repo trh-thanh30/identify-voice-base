@@ -6,6 +6,7 @@ import { ROUTES } from "@/constants";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { MainLayout } from "@/layouts/MainLayout";
 import AdminAccountManagement from "@/pages/AdminAccountManagement";
+import AdminTranslationHistory from "@/pages/AdminTranslationHistory";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import VoiceDirectory from "@/pages/VoiceDirectory";
@@ -59,6 +60,10 @@ function App() {
               <Route
                 path={ROUTES.ADMIN_ACCOUNTS}
                 element={<AdminAccountManagement />}
+              />
+              <Route
+                path={ROUTES.ADMIN_TRANSLATIONS}
+                element={<AdminTranslationHistory />}
               />
             </Route>
           </Route>

@@ -160,10 +160,18 @@ export default function TranslateLive() {
             ? await translateApi.createTranslateSummarizeJob({
                 sourceText: normalizedText,
                 targetLang: translateTargetLanguage,
+                sourceLang:
+                  sourceLanguageRef.current === AUTO_LANGUAGE
+                    ? undefined
+                    : sourceLanguageRef.current,
               })
             : await translateApi.createTranslateJob({
                 sourceText: normalizedText,
                 targetLang: translateTargetLanguage,
+                sourceLang:
+                  sourceLanguageRef.current === AUTO_LANGUAGE
+                    ? undefined
+                    : sourceLanguageRef.current,
               });
 
         if (requestId !== translateRequestIdRef.current) return;

@@ -7,6 +7,8 @@ import type {
   TranslateJobCreateResponse,
   TranslateJobResponse,
   TranslateResponse,
+  TranslationHistoryFilter,
+  TranslationHistoryResponse,
 } from "../types/translate.types";
 
 export interface OcrRequest {
@@ -24,6 +26,7 @@ export interface SpeechToTextRequest {
 export interface TranslateTextRequest {
   sourceText: string;
   targetLang: string;
+  sourceLang?: string;
 }
 
 export type TranslateExportFormat = "docx" | "pdf";
@@ -107,6 +110,7 @@ export const translateApi = {
       {
         source_text: payload.sourceText,
         target_lang: payload.targetLang,
+        source_lang: payload.sourceLang,
       },
     );
 
@@ -121,6 +125,7 @@ export const translateApi = {
     >("/ai-core/translate/jobs", {
       source_text: payload.sourceText,
       target_lang: payload.targetLang,
+      source_lang: payload.sourceLang,
     });
 
     return unwrapApiResponse(response.data);
@@ -154,6 +159,7 @@ export const translateApi = {
       {
         source_text: payload.sourceText,
         target_lang: payload.targetLang,
+        source_lang: payload.sourceLang,
       },
     );
 
@@ -168,6 +174,19 @@ export const translateApi = {
     >("/ai-core/translate-summarize/jobs", {
       source_text: payload.sourceText,
       target_lang: payload.targetLang,
+      source_lang: payload.sourceLang,
+    });
+
+    return unwrapApiResponse(response.data);
+  },
+
+  async getTranslationHistory(
+    params: TranslationHistoryFilter,
+  ): Promise<TranslationHistoryResponse> {
+    const response = await axiosInstance.get<
+      ApiResponse<TranslationHistoryResponse>
+    >("/translate/history", {
+      params,
     });
 
     return unwrapApiResponse(response.data);

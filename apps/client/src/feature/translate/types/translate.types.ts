@@ -64,3 +64,46 @@ export interface SelectedTranslateFile {
   file: File;
   kind: TranslateFileKind;
 }
+
+export type TranslationHistoryMode = "TRANSLATE" | "SUMMARIZE";
+
+export interface TranslationHistoryFilter {
+  page?: number;
+  page_size?: 10 | 25 | 50;
+  from_date?: string;
+  to_date?: string;
+  source_lang?: string;
+  target_lang?: string;
+}
+
+export interface TranslationHistoryRecord {
+  id: string;
+  source_text: string;
+  translated_text: string;
+  source_lang?: string | null;
+  target_lang: string;
+  mode: TranslationHistoryMode;
+  created_at: string;
+  operator: {
+    id: string;
+    email?: string;
+    username?: string | null;
+    role: string;
+  };
+}
+
+export interface TranslationHistoryResponse {
+  items: TranslationHistoryRecord[];
+  stats: {
+    total: number;
+    today_count: number;
+    by_target_lang: { target_lang: string; count: number }[];
+    by_mode: { mode: TranslationHistoryMode; count: number }[];
+  };
+  pagination: {
+    page: number;
+    page_size: number;
+    total: number;
+    total_pages: number;
+  };
+}

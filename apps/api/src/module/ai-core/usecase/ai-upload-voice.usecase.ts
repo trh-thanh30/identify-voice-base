@@ -55,7 +55,6 @@ export class UploadVoiceUseCase {
             headers: {
               ...formData.getHeaders(),
             },
-            timeout: this.config.timeout,
           })
           .pipe(
             catchError((error: AxiosError) => {
@@ -65,7 +64,7 @@ export class UploadVoiceUseCase {
               const reason = this.describeAxiosError(error);
 
               this.logger.error(
-                `AI Service Error [POST /upload_voice] url=${uploadUrl} timeout=${this.config.timeout}ms code=${networkCode} status=${status ?? 'N/A'} reason=${reason} message=${error.message}`,
+                `AI Service Error [POST /upload_voice] url=${uploadUrl} code=${networkCode} status=${status ?? 'N/A'} reason=${reason} message=${error.message}`,
                 responseData
                   ? JSON.stringify(responseData)
                   : `filePath=${filePath}, voiceName=${name}, mimeType=${mimeType ?? 'unknown'}`,

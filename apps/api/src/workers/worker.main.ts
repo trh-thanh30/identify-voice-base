@@ -54,10 +54,7 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
   const aiUrl = configService.get<string>('ai.url');
-  const aiTimeout = configService.get<number>('ai.timeout');
-  logger.log(
-    `⚙️ AI config resolved: url=${aiUrl ?? 'undefined'} timeout=${aiTimeout ?? 'undefined'}ms`,
-  );
+  logger.log(`⚙️ AI config resolved: url=${aiUrl ?? 'undefined'}`);
 
   try {
     app.get('BullQueue_update-voice');

@@ -68,7 +68,6 @@ export class AiIdentifySingleUseCase {
             headers: {
               ...formData.getHeaders(),
             },
-            timeout: this.config.timeout,
           })
           .pipe(
             catchError<AxiosResponse<any, FormData>, any>(

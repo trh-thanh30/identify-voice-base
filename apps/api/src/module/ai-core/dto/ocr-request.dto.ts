@@ -12,13 +12,23 @@ const booleanStringToBoolean = (value: unknown): boolean | undefined => {
   return Boolean(value);
 };
 
+const rawBooleanStringToBoolean = ({
+  obj,
+  key,
+  value,
+}: {
+  obj: Record<string, unknown>;
+  key: string;
+  value: unknown;
+}) => booleanStringToBoolean(obj[key] ?? value);
+
 export class OcrRequestDto {
   @IsOptional()
   @IsIn(OCR_LANGUAGES)
   language?: OcrLanguage;
 
   @IsOptional()
-  @Transform(({ value }) => booleanStringToBoolean(value))
+  @Transform(rawBooleanStringToBoolean)
   @IsBoolean()
   format?: boolean;
 }

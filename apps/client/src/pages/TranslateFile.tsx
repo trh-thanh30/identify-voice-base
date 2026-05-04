@@ -31,6 +31,7 @@ import { TranslateAudioPreview } from "@/feature/translate/components/translate-
 import { TranslateFileDropzone } from "@/feature/translate/components/translate-file-dropzone";
 import {
   AUTO_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
   OCR_LANGUAGES,
   SPEECH_LANGUAGES,
   TRANSLATION_LANGUAGES,
@@ -62,19 +63,34 @@ function getDetectedLanguageCode(
   return normalizedLanguage || null;
 }
 
-function getLanguageLabel(languageCode: string) {
-  return (
-    TRANSLATION_LANGUAGES.find((language) => language.value === languageCode)
-      ?.label ?? languageCode
-  );
-}
-
 function getOcrRequestLanguage(language: string) {
   if (language === AUTO_LANGUAGE) return undefined;
 
   return OCR_LANGUAGES.some((option) => option.value === language)
     ? language
     : undefined;
+}
+
+function getSupportedSourceLanguage(
+  languageCode: string | null,
+  isAudio: boolean,
+) {
+  if (!languageCode) return null;
+
+  const supportedLanguages = isAudio ? SPEECH_LANGUAGES : OCR_LANGUAGES;
+  const normalizedLanguage = languageCode.trim().toLowerCase();
+
+  if (["zh-cn", "zh-hans", "cmn"].includes(normalizedLanguage)) {
+    return supportedLanguages.some((language) => language.value === "zh")
+      ? "zh"
+      : null;
+  }
+
+  return (
+    supportedLanguages.find(
+      (language) => language.value.toLowerCase() === normalizedLanguage,
+    )?.value ?? null
+  );
 }
 
 function getSelectedFileType(file?: SelectedTranslateFile | null) {
@@ -91,7 +107,7 @@ export default function TranslateFile() {
   const [selectedFile, setSelectedFile] =
     useState<SelectedTranslateFile | null>(null);
   const [sourceLanguage, setSourceLanguage] = useState(AUTO_LANGUAGE);
-  const [targetLanguage, setTargetLanguage] = useState("en");
+  const [targetLanguage, setTargetLanguage] = useState(DEFAULT_TARGET_LANGUAGE);
   const [returnTimestamp, setReturnTimestamp] = useState(false);
   const [denoiseAudio, setDenoiseAudio] = useState(false);
   const [mode, setMode] = useState<TranslateMode>("translate");
@@ -115,23 +131,8 @@ export default function TranslateFile() {
   }, []);
 
   const sourceLanguageOptions = useMemo(() => {
-    const baseOptions = isAudio ? SPEECH_LANGUAGES : OCR_LANGUAGES;
-
-    if (
-      sourceLanguage !== AUTO_LANGUAGE &&
-      !baseOptions.some((language) => language.value === sourceLanguage)
-    ) {
-      return [
-        ...baseOptions,
-        {
-          value: sourceLanguage,
-          label: getLanguageLabel(sourceLanguage),
-        },
-      ];
-    }
-
-    return baseOptions;
-  }, [isAudio, sourceLanguage]);
+    return isAudio ? SPEECH_LANGUAGES : OCR_LANGUAGES;
+  }, [isAudio]);
 
   const detectSourceLanguage = async (text: string) => {
     const normalizedText = text.trim();
@@ -144,12 +145,16 @@ export default function TranslateFile() {
       const detectedLanguage = getDetectedLanguageCode(
         result.detected_languages,
       );
+      const supportedLanguage = getSupportedSourceLanguage(
+        detectedLanguage,
+        isAudio,
+      );
 
-      if (detectedLanguage) {
-        setSourceLanguage(detectedLanguage);
+      if (supportedLanguage) {
+        setSourceLanguage(supportedLanguage);
       }
 
-      return detectedLanguage;
+      return supportedLanguage;
     } catch {
       toast.warning("Không thể tự nhận diện ngôn ngữ nguồn.");
       return null;
@@ -180,7 +185,7 @@ export default function TranslateFile() {
     translateRequestIdRef.current += 1;
     setSelectedFile(null);
     setSourceLanguage(AUTO_LANGUAGE);
-    setTargetLanguage("en");
+    setTargetLanguage(DEFAULT_TARGET_LANGUAGE);
     setReturnTimestamp(false);
     setDenoiseAudio(false);
     setMode("translate");
@@ -216,7 +221,8 @@ export default function TranslateFile() {
         });
         const text = getTranscriptText(result.transcript);
         const detectedLanguage =
-          result.language ?? (await detectSourceLanguage(text));
+          getSupportedSourceLanguage(result.language ?? null, true) ??
+          (await detectSourceLanguage(text));
 
         if (detectedLanguage) {
           setSourceLanguage(detectedLanguage);

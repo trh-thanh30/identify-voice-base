@@ -34,7 +34,6 @@ export class AiDeleteVoiceUseCase {
         this.httpService
           .delete(`${this.config.url}/delete_record/`, {
             params: { voice_id: voiceId },
-            timeout: this.config.timeout,
           })
           .pipe(
             catchError((error: AxiosError) => {

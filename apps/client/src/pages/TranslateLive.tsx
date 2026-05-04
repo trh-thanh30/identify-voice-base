@@ -22,10 +22,11 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { translateApi } from "@/feature/translate/api/translate.api";
 import type { TranslateExportFormat } from "@/feature/translate/api/translate.api";
+import { translateApi } from "@/feature/translate/api/translate.api";
 import {
   AUTO_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
   LIVE_TRANSLATE_SOURCE_LANGUAGE_OPTIONS,
   TRANSLATION_LANGUAGES,
 } from "@/feature/translate/constants/translate.constants";
@@ -63,7 +64,7 @@ export default function TranslateLive() {
   const translateProgressRef = useRef(0);
   const sourceLanguageRef = useRef(AUTO_LANGUAGE);
   const [sourceLanguage, setSourceLanguage] = useState(AUTO_LANGUAGE);
-  const [targetLanguage, setTargetLanguage] = useState("en");
+  const [targetLanguage, setTargetLanguage] = useState(DEFAULT_TARGET_LANGUAGE);
   const [mode, setMode] = useState<TranslateMode>("translate");
   const [sourceText, setSourceText] = useState("");
   const [translatedText, setTranslatedText] = useState("");
@@ -88,7 +89,7 @@ export default function TranslateLive() {
   const resetPage = () => {
     translateRequestIdRef.current += 1;
     updateSourceLanguage(AUTO_LANGUAGE);
-    setTargetLanguage("en");
+    setTargetLanguage(DEFAULT_TARGET_LANGUAGE);
     setMode("translate");
     setSourceText("");
     setTranslatedText("");

@@ -118,9 +118,7 @@ export class AiTranslateUseCase {
     try {
       const response = await firstValueFrom(
         this.httpService
-          .post<TranslationCoreResponse, TranslationCoreRequest>(url, body, {
-            timeout: this.config.timeout,
-          })
+          .post<TranslationCoreResponse, TranslationCoreRequest>(url, body)
           .pipe(
             catchError((error: AxiosError<unknown, TranslationCoreRequest>) => {
               this.logger.error(

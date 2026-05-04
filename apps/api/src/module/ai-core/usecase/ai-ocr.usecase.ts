@@ -52,7 +52,6 @@ export class AiOcrUseCase {
           .post<any, FormData>(url, formData, {
             headers: formData.getHeaders(),
             params,
-            timeout: this.config.timeout,
           })
           .pipe(
             catchError<AxiosResponse<any, FormData>, any>(

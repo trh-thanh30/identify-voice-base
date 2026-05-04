@@ -59,7 +59,6 @@ function getApiErrorPayload(data: unknown) {
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: env.API_BASE_URL,
-  timeout: 30_000,
   withCredentials: true,
   headers: {
     Accept: "application/json",

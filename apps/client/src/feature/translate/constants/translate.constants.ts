@@ -99,3 +99,4 @@ export const LIVE_TRANSLATE_SOURCE_LANGUAGE_OPTIONS = [
   },
   ...TRANSLATION_LANGUAGES,
 ] as const;
+export const DEFAULT_TARGET_LANGUAGE = "vi";

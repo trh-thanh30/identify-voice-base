@@ -12,18 +12,28 @@ const booleanStringToBoolean = (value: unknown): boolean | undefined => {
   return Boolean(value);
 };
 
+const rawBooleanStringToBoolean = ({
+  obj,
+  key,
+  value,
+}: {
+  obj: Record<string, unknown>;
+  key: string;
+  value: unknown;
+}) => booleanStringToBoolean(obj[key] ?? value);
+
 export class SpeechToTextRequestDto {
   @IsOptional()
   @IsIn(SPEECH_TO_TEXT_LANGUAGES)
   language?: SpeechToTextLanguage;
 
   @IsOptional()
-  @Transform(({ value }) => booleanStringToBoolean(value))
+  @Transform(rawBooleanStringToBoolean)
   @IsBoolean()
   return_timestamp?: boolean;
 
   @IsOptional()
-  @Transform(({ value }) => booleanStringToBoolean(value))
+  @Transform(rawBooleanStringToBoolean)
   @IsBoolean()
   denoise_audio?: boolean;
 }

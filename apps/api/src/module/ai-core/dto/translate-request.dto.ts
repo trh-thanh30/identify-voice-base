@@ -16,6 +16,10 @@ export class TranslateRequestDto {
   @IsOptional()
   @IsString()
   source_lang?: string;
+
+  @IsOptional()
+  @IsString()
+  source_file_type?: string;
 }
 
 export class DetectLanguageRequestDto {

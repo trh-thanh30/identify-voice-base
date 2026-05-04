@@ -129,6 +129,10 @@ async function bootstrap() {
     // Start the application
     const port = appCfg.port;
     await app.listen(port, '0.0.0.0');
+    const server = app.getHttpServer();
+    server.requestTimeout = 0;
+    server.headersTimeout = 0;
+    server.keepAliveTimeout = 0;
 
     const e = process.env;
     console.log(

@@ -50,7 +50,6 @@ AI_CORE_OCR_URL=http://localhost:8003
 AI_CORE_SPEECH_TO_TEXT_URL=http://localhost:8996
 AI_CORE_TRANSLATION_URL=http://localhost:8505
 AI_CORE_TRANSLATION_CHUNK_WORD_LIMIT=1000
-AI_SERVICE_TIMEOUT=30000
 AUDIO_NORMALIZE_TIMEOUT_MS=15000
 ```
 
@@ -61,7 +60,6 @@ Lưu ý:
 - `AI_CORE_SPEECH_TO_TEXT_URL` dùng cho Speech-to-Text.
 - `AI_CORE_TRANSLATION_URL` dùng cho translate, detect language, translate summarize.
 - `AI_CORE_TRANSLATION_CHUNK_WORD_LIMIT` là số từ tối đa mỗi request backend gửi sang Translation AI Core. Nếu `source_text` dài hơn giới hạn này, backend tự chia thành nhiều đoạn và ghép kết quả trả về cho FE.
-- `AI_SERVICE_TIMEOUT` là timeout HTTP khi backend gọi sang AI Core.
 - `AUDIO_NORMALIZE_TIMEOUT_MS` dùng cho bước normalize audio trước các luồng voice identify/enroll.
 
 Backend không expose các URL này cho FE.

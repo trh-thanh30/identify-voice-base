@@ -55,7 +55,6 @@ export class AiIdentifyMultiUseCase {
               headers: {
                 ...formData.getHeaders(),
               },
-              timeout: this.config.timeout,
             },
           )
           .pipe(

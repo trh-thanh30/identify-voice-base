@@ -42,6 +42,7 @@ export const SPEECH_LANGUAGES = [
 ] as const;
 
 export const OCR_LANGUAGES = [
+  { value: AUTO_LANGUAGE, label: "Tự động nhận diện" },
   { value: "vi", label: "Tiếng Việt" },
   { value: "en", label: "Tiếng Anh" },
   { value: "de", label: "Tiếng Đức" },
@@ -98,3 +99,4 @@ export const LIVE_TRANSLATE_SOURCE_LANGUAGE_OPTIONS = [
   },
   ...TRANSLATION_LANGUAGES,
 ] as const;
+export const DEFAULT_TARGET_LANGUAGE = "vi";

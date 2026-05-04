@@ -1,15 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
   Copy,
   Download,
   Languages,
   Loader2,
   SearchX,
-  X,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -33,11 +29,6 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -55,218 +46,22 @@ import {
 import { QUERY_KEYS } from "@/constants";
 import type { TranslateExportFormat } from "@/feature/translate/api/translate.api";
 import { translateApi } from "@/feature/translate/api/translate.api";
+import { TranslationHistoryDatePicker } from "@/feature/translate/components/translation-history-date-picker";
 import { TRANSLATION_LANGUAGES } from "@/feature/translate/constants/translate.constants";
 import type {
   TranslationHistoryMode,
   TranslationHistoryRecord,
 } from "@/feature/translate/types/translate.types";
+import {
+  buildPaginationItems,
+  formatDateTime,
+  getExportTitle,
+  getFileTypeLabel,
+  getLanguageLabel,
+} from "@/feature/translate/utils/translation-history.utils";
 import { formatError } from "@/utils";
 
 const ALL_LANGUAGES = "all";
-const WEEKDAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-
-function parseDateValue(value: string) {
-  if (!value) return null;
-
-  const [year, month, day] = value.split("-").map(Number);
-  if (!year || !month || !day) return null;
-
-  return new Date(year, month - 1, day);
-}
-
-function formatDateValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-function formatDateLabel(value: string) {
-  const date = parseDateValue(value);
-  if (!date) return "Chọn ngày";
-
-  return date.toLocaleDateString("vi-VN");
-}
-
-function getCalendarDays(monthDate: Date) {
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const leadingEmptyDays = (firstDay.getDay() + 6) % 7;
-
-  return [
-    ...Array.from({ length: leadingEmptyDays }, () => null),
-    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
-  ];
-}
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("vi-VN");
-}
-
-function getLanguageLabel(languageCode?: string | null) {
-  if (!languageCode) return "Tự động";
-
-  return (
-    TRANSLATION_LANGUAGES.find((language) => language.value === languageCode)
-      ?.label ?? languageCode
-  );
-}
-
-function buildPaginationItems(currentPage: number, totalPages: number) {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1);
-  }
-
-  if (currentPage <= 3) {
-    return [1, 2, 3, 4, "ellipsis", totalPages] as const;
-  }
-
-  if (currentPage >= totalPages - 2) {
-    return [
-      1,
-      "ellipsis",
-      totalPages - 3,
-      totalPages - 2,
-      totalPages - 1,
-      totalPages,
-    ] as const;
-  }
-
-  return [
-    1,
-    "ellipsis",
-    currentPage - 1,
-    currentPage,
-    currentPage + 1,
-    "ellipsis",
-    totalPages,
-  ] as const;
-}
-
-function getExportTitle(mode: TranslationHistoryMode) {
-  return mode === "SUMMARIZE" ? "Bản dịch tóm tắt" : "Bản dịch";
-}
-
-function DatePicker({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const selectedDate = parseDateValue(value);
-  const [open, setOpen] = useState(false);
-  const [monthDate, setMonthDate] = useState(selectedDate ?? new Date());
-  const calendarDays = getCalendarDays(monthDate);
-
-  const updateMonth = (offset: number) => {
-    setMonthDate(
-      (current) =>
-        new Date(current.getFullYear(), current.getMonth() + offset, 1),
-    );
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full justify-start bg-white text-left font-normal"
-        >
-          <CalendarDays className="size-4 text-muted-foreground" />
-          <span className={value ? "text-foreground" : "text-muted-foreground"}>
-            {formatDateLabel(value)}
-          </span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72">
-        <div className="mb-3 flex items-center justify-between">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => updateMonth(-1)}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <div className="text-sm font-semibold">
-            {monthDate.toLocaleDateString("vi-VN", {
-              month: "long",
-              year: "numeric",
-            })}
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => updateMonth(1)}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground">
-          {WEEKDAY_LABELS.map((label) => (
-            <div key={label} className="py-1">
-              {label}
-            </div>
-          ))}
-        </div>
-        <div className="mt-1 grid grid-cols-7 gap-1">
-          {calendarDays.map((day, index) => {
-            if (!day) {
-              return <div key={`empty-${index}`} className="size-8" />;
-            }
-
-            const date = new Date(
-              monthDate.getFullYear(),
-              monthDate.getMonth(),
-              day,
-            );
-            const nextValue = formatDateValue(date);
-            const isSelected = nextValue === value;
-
-            return (
-              <Button
-                key={nextValue}
-                type="button"
-                variant={isSelected ? "default" : "ghost"}
-                size="icon-sm"
-                className="size-8"
-                onClick={() => {
-                  onChange(nextValue);
-                  setOpen(false);
-                }}
-              >
-                {day}
-              </Button>
-            );
-          })}
-        </div>
-
-        {value ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="mt-3 w-full justify-center"
-            onClick={() => {
-              onChange("");
-              setOpen(false);
-            }}
-          >
-            <X className="size-4" />
-            Xóa ngày
-          </Button>
-        ) : null}
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 export default function AdminTranslationHistory() {
   const [page, setPage] = useState(1);
@@ -415,7 +210,7 @@ export default function AdminTranslationHistory() {
         <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">Từ ngày</p>
-            <DatePicker
+            <TranslationHistoryDatePicker
               value={fromDate}
               onChange={(value) => {
                 setFromDate(value);
@@ -427,7 +222,7 @@ export default function AdminTranslationHistory() {
             <p className="text-xs font-medium text-muted-foreground">
               Đến ngày
             </p>
-            <DatePicker
+            <TranslationHistoryDatePicker
               value={toDate}
               onChange={(value) => {
                 setToDate(value);
@@ -535,13 +330,14 @@ export default function AdminTranslationHistory() {
             </p>
           </div>
         ) : (
-          <Table className="min-w-215 table-fixed">
+          <Table className="min-w-230 table-fixed">
             <TableHeader className="sticky top-0 z-10 bg-slate-50">
               <TableRow>
                 <TableHead className="w-37.5">Thời gian</TableHead>
                 <TableHead className="w-35">Người dịch</TableHead>
                 <TableHead className="w-22.5">Luồng</TableHead>
                 <TableHead className="w-40">Ngôn ngữ</TableHead>
+                <TableHead className="w-24">Loại tệp</TableHead>
                 <TableHead className="w-50 text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
@@ -565,11 +361,17 @@ export default function AdminTranslationHistory() {
                       {item.mode === "SUMMARIZE" ? "Tóm tắt" : "Dịch"}
                     </Badge>
                   </TableCell>
+
                   <TableCell className="align-top text-sm">
                     <span className="block truncate">
                       {getLanguageLabel(item.source_lang)} {"->"}{" "}
                       {getLanguageLabel(item.target_lang)}
                     </span>
+                  </TableCell>
+                  <TableCell className="align-top">
+                    <Badge variant="secondary">
+                      {getFileTypeLabel(item.source_file_type)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="align-top">
                     <div className="flex justify-end gap-2">

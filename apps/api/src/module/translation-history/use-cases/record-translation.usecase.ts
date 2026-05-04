@@ -9,6 +9,7 @@ export interface RecordTranslationInput {
   translatedText: string;
   sourceLang?: string;
   targetLang?: string;
+  sourceFileType?: string;
   mode: 'translate' | 'summarize';
 }
 
@@ -35,6 +36,7 @@ export class RecordTranslationUseCase implements BaseUseCase<
       translated_text: translatedText,
       source_lang: input.sourceLang?.trim() || null,
       target_lang: input.targetLang ?? 'en',
+      source_file_type: input.sourceFileType?.trim() || null,
       mode:
         input.mode === 'summarize'
           ? TranslationMode.SUMMARIZE

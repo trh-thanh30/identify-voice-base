@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { ACCEPTED_AUDIO_TYPES } from "@/constants";
+import { ACCEPTED_AUDIO_EXTENSIONS, ACCEPTED_AUDIO_TYPES } from "@/constants";
+
+function hasAcceptedAudioExtension(fileName: string) {
+  const normalizedFileName = fileName.toLowerCase();
+  return ACCEPTED_AUDIO_EXTENSIONS.some((extension) =>
+    normalizedFileName.endsWith(extension),
+  );
+}
 
 const audioFileSchema = z
   .custom<File | null>((value) => value === null || value instanceof File, {
@@ -23,8 +30,9 @@ const audioFileSchema = z
 
     if (
       !ACCEPTED_AUDIO_TYPES.includes(
-        value.type as (typeof ACCEPTED_AUDIO_TYPES)[number],
-      )
+        value.type.toLowerCase() as (typeof ACCEPTED_AUDIO_TYPES)[number],
+      ) &&
+      !hasAcceptedAudioExtension(value.name)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

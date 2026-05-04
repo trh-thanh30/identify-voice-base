@@ -165,6 +165,7 @@ export class AiTranslateJobService {
       translatedText,
       sourceLang: dto.source_lang,
       targetLang: dto.target_lang,
+      sourceFileType: dto.source_file_type,
       mode,
     });
   }

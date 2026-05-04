@@ -13,6 +13,9 @@ import { AxiosError, AxiosResponse } from 'axios';
 import FormData from 'form-data';
 import { catchError, firstValueFrom } from 'rxjs';
 import { OcrRequestDto } from '../dto/ocr-request.dto';
+import type { OcrLanguage } from '../constants/languages';
+
+const DEFAULT_OCR_LANGUAGE: OcrLanguage = 'vi';
 
 @Injectable()
 export class AiOcrUseCase {
@@ -35,9 +38,7 @@ export class AiOcrUseCase {
       contentType: file.mimetype,
     });
 
-    if (dto.language !== undefined) {
-      formData.append('language', dto.language);
-    }
+    formData.append('language', dto.language ?? DEFAULT_OCR_LANGUAGE);
 
     const params = {
       format: dto.format ?? false,

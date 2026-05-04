@@ -9,7 +9,7 @@ const ocrUrl =
   process.env.AI_CORE_OCR_URL ||
   process.env.AI_CORE_OCR_URl ||
   'http://localhost:8003';
-const requestTimeout = getNumber(process.env.AI_SERVICE_TIMEOUT, 30000);
+const requestTimeout = getNumber(process.env.AI_SERVICE_TIMEOUT, 120000);
 
 export default registerAs('ai', () => ({
   url: normalizeUrl(identifyUrl),

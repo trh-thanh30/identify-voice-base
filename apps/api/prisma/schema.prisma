@@ -305,6 +305,7 @@ model translation_records {
   translated_text String
   source_lang     String?
   target_lang     String
+  source_file_type String?
   mode            TranslationMode @default(TRANSLATE)
   created_at      DateTime        @default(now())
 

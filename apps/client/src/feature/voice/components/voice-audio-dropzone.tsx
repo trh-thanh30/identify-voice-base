@@ -4,7 +4,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ACCEPTED_AUDIO_TYPES } from "@/constants";
+import { ACCEPTED_AUDIO_EXTENSIONS, ACCEPTED_AUDIO_TYPES } from "@/constants";
 import { cn } from "@/lib/utils";
 import { truncText } from "@/utils/trunc-text";
 import { FileAudio, Mic, Square, Upload, X } from "lucide-react";
@@ -19,15 +19,6 @@ interface VoiceAudioDropzoneProps {
   description?: string;
   error?: string;
 }
-
-const ACCEPTED_AUDIO_EXTENSIONS = [
-  ".mp3",
-  ".wav",
-  ".m4a",
-  ".webm",
-  ".ogg",
-  ".flac",
-] as const;
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -70,7 +61,7 @@ export function VoiceAudioDropzone({
   onChange,
   disabled = false,
   label = "Kéo thả hoặc tải file audio",
-  description = "Thả file từ File Explorer hoặc chọn mp3, wav, m4a, webm, ogg, flac",
+  description = "Thả file từ File Explorer hoặc chọn mp3, wav, m4a, mp4, webm, ogg, flac",
   error,
 }: VoiceAudioDropzoneProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -228,7 +219,7 @@ export function VoiceAudioDropzone({
       <input
         ref={inputRef}
         type="file"
-        accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg,.flac"
+        accept="audio/*,video/mp4,.mp3,.wav,.m4a,.mp4,.webm,.ogg,.flac"
         className="hidden"
         onChange={handleFileChange}
         disabled={isInteractionDisabled}

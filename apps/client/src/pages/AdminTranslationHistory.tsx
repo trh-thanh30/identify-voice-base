@@ -115,6 +115,37 @@ function getLanguageLabel(languageCode?: string | null) {
   );
 }
 
+function getFileTypeLabel(fileType?: string | null) {
+  if (!fileType) return "-";
+
+  const normalizedType = fileType.trim().toLowerCase();
+  const labels: Record<string, string> = {
+    audio: "Audio",
+    document: "Tài liệu",
+    image: "Ảnh",
+    text: "Văn bản",
+    pdf: "PDF",
+    docx: "DOCX",
+    txt: "TXT",
+    png: "PNG",
+    jpg: "JPG",
+    jpeg: "JPEG",
+    webp: "WEBP",
+    bmp: "BMP",
+    tif: "TIF",
+    tiff: "TIFF",
+    mp3: "MP3",
+    wav: "WAV",
+    m4a: "M4A",
+    mp4: "MP4",
+    webm: "WEBM",
+    ogg: "OGG",
+    flac: "FLAC",
+  };
+
+  return labels[normalizedType] ?? normalizedType.toUpperCase();
+}
+
 function buildPaginationItems(currentPage: number, totalPages: number) {
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -535,13 +566,14 @@ export default function AdminTranslationHistory() {
             </p>
           </div>
         ) : (
-          <Table className="min-w-215 table-fixed">
+          <Table className="min-w-230 table-fixed">
             <TableHeader className="sticky top-0 z-10 bg-slate-50">
               <TableRow>
                 <TableHead className="w-37.5">Thời gian</TableHead>
                 <TableHead className="w-35">Người dịch</TableHead>
                 <TableHead className="w-22.5">Luồng</TableHead>
                 <TableHead className="w-40">Ngôn ngữ</TableHead>
+                <TableHead className="w-24">Loại tệp</TableHead>
                 <TableHead className="w-50 text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
@@ -565,11 +597,17 @@ export default function AdminTranslationHistory() {
                       {item.mode === "SUMMARIZE" ? "Tóm tắt" : "Dịch"}
                     </Badge>
                   </TableCell>
+
                   <TableCell className="align-top text-sm">
                     <span className="block truncate">
                       {getLanguageLabel(item.source_lang)} {"->"}{" "}
                       {getLanguageLabel(item.target_lang)}
                     </span>
+                  </TableCell>
+                  <TableCell className="align-top">
+                    <Badge variant="secondary">
+                      {getFileTypeLabel(item.source_file_type)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="align-top">
                     <div className="flex justify-end gap-2">

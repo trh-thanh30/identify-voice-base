@@ -82,6 +82,7 @@ export interface TranslationHistoryRecord {
   translated_text: string;
   source_lang?: string | null;
   target_lang: string;
+  source_file_type?: string | null;
   mode: TranslationHistoryMode;
   created_at: string;
   operator: {

@@ -27,6 +27,7 @@ export interface TranslateTextRequest {
   sourceText: string;
   targetLang: string;
   sourceLang?: string;
+  sourceFileType?: string;
 }
 
 export type TranslateExportFormat = "docx" | "pdf";
@@ -111,6 +112,7 @@ export const translateApi = {
         source_text: payload.sourceText,
         target_lang: payload.targetLang,
         source_lang: payload.sourceLang,
+        source_file_type: payload.sourceFileType,
       },
     );
 
@@ -126,6 +128,7 @@ export const translateApi = {
       source_text: payload.sourceText,
       target_lang: payload.targetLang,
       source_lang: payload.sourceLang,
+      source_file_type: payload.sourceFileType,
     });
 
     return unwrapApiResponse(response.data);
@@ -160,6 +163,7 @@ export const translateApi = {
         source_text: payload.sourceText,
         target_lang: payload.targetLang,
         source_lang: payload.sourceLang,
+        source_file_type: payload.sourceFileType,
       },
     );
 
@@ -175,6 +179,7 @@ export const translateApi = {
       source_text: payload.sourceText,
       target_lang: payload.targetLang,
       source_lang: payload.sourceLang,
+      source_file_type: payload.sourceFileType,
     });
 
     return unwrapApiResponse(response.data);

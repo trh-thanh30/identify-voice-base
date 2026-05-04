@@ -28,7 +28,8 @@ const normalizeMimeType = (mimeType: string): string =>
  */
 export default registerAs('storage', () => {
   const allowedMimes = (
-    process.env.STORAGE_ALLOWED_MIMES ?? 'audio/mpeg,audio/wav,audio/webm'
+    process.env.STORAGE_ALLOWED_MIMES ??
+    'audio/mpeg,audio/wav,audio/webm,audio/mp4,video/mp4,audio/x-m4a'
   )
     .split(',')
     .map(normalizeMimeType);

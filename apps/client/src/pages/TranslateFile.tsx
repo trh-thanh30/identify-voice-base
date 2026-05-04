@@ -69,6 +69,21 @@ function getLanguageLabel(languageCode: string) {
   );
 }
 
+function getOcrRequestLanguage(language: string) {
+  if (language === AUTO_LANGUAGE) return undefined;
+
+  return OCR_LANGUAGES.some((option) => option.value === language)
+    ? language
+    : undefined;
+}
+
+function getSelectedFileType(file?: SelectedTranslateFile | null) {
+  const fileName = file?.file.name.trim().toLowerCase();
+  const extension = fileName?.match(/\.([^.]+)$/)?.[1];
+
+  return extension || file?.kind || "text";
+}
+
 export default function TranslateFile() {
   const translateFormRef = useRef<HTMLDivElement | null>(null);
   const translateProgressRef = useRef(0);
@@ -215,7 +230,7 @@ export default function TranslateFile() {
 
       const result = await translateApi.ocr({
         file: file.file,
-        language,
+        language: getOcrRequestLanguage(language),
       });
       const text = getOcrText(result.results);
       await detectSourceLanguage(text);
@@ -261,12 +276,14 @@ export default function TranslateFile() {
               targetLang: translateTargetLanguage,
               sourceLang:
                 sourceLanguage === AUTO_LANGUAGE ? undefined : sourceLanguage,
+              sourceFileType: getSelectedFileType(selectedFile),
             })
           : await translateApi.createTranslateJob({
               sourceText: normalizedText,
               targetLang: translateTargetLanguage,
               sourceLang:
                 sourceLanguage === AUTO_LANGUAGE ? undefined : sourceLanguage,
+              sourceFileType: getSelectedFileType(selectedFile),
             });
 
       if (!isCurrentRequest()) return;
@@ -333,8 +350,7 @@ export default function TranslateFile() {
   };
 
   const handleSelectedFileChange = (nextFile: SelectedTranslateFile | null) => {
-    const nextSourceLanguage =
-      nextFile?.kind === "audio" ? AUTO_LANGUAGE : "vi";
+    const nextSourceLanguage = AUTO_LANGUAGE;
 
     setSelectedFile(nextFile);
     setSourceLanguage(nextSourceLanguage);

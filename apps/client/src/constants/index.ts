@@ -105,10 +105,21 @@ export const ACCEPTED_AUDIO_TYPES = [
   "audio/wave",
   "audio/vnd.wave",
   "audio/mp4",
+  "video/mp4",
   "audio/x-m4a",
   "audio/webm",
   "audio/ogg",
   "audio/flac",
+] as const;
+
+export const ACCEPTED_AUDIO_EXTENSIONS = [
+  ".mp3",
+  ".wav",
+  ".m4a",
+  ".mp4",
+  ".webm",
+  ".ogg",
+  ".flac",
 ] as const;
 
 export const MAX_AUDIO_FILE_SIZE_MB = 25;

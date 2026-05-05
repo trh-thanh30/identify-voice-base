@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import type { TranslateExportFormat } from "@/feature/translate/api/translate.api";
 import { translateApi } from "@/feature/translate/api/translate.api";
 import { TranslateAudioPreview } from "@/feature/translate/components/translate-audio-preview";
 import { TranslateFileDropzone } from "@/feature/translate/components/translate-file-dropzone";
@@ -36,6 +35,7 @@ import {
   SPEECH_LANGUAGES,
   TRANSLATION_LANGUAGES,
 } from "@/feature/translate/constants/translate.constants";
+import { useDownloadTranslatedFile } from "@/feature/translate/hooks/use-download-translated-file";
 import type {
   SelectedTranslateFile,
   TranslateMode,
@@ -118,14 +118,25 @@ export default function TranslateFile() {
   const [processingStep, setProcessingStep] = useState<ProcessingStep>("idle");
   const [translateProgress, setTranslateProgress] = useState(0);
   const [visibleIsLoadingAudio, setVisibleIsLoadingAudio] = useState(false);
-  const [exportingFormat, setExportingFormat] =
-    useState<TranslateExportFormat | null>(null);
 
   const isBusy = processingStep !== "idle";
   const isAudio = selectedFile?.kind === "audio";
   const hasFile = Boolean(selectedFile);
   const hasSourceText = sourceText.trim().length > 0;
   const outputTitle = mode === "summarize" ? "Bản dịch tóm tắt" : "Bản dịch";
+  const exportFilename = useMemo(() => {
+    const sourceName = selectedFile?.file.name.replace(/\.[^.]+$/, "").trim();
+    const prefix = mode === "summarize" ? "ban-dich-tom-tat" : "ban-dich";
+
+    return sourceName ? `${prefix}-${sourceName}` : prefix;
+  }, [mode, selectedFile]);
+  const { downloadTranslatedFile, exportingFormat } = useDownloadTranslatedFile(
+    {
+      filename: exportFilename,
+      text: translatedText,
+      title: outputTitle,
+    },
+  );
 
   const updateTranslateProgress = useCallback((progress: number) => {
     translateProgressRef.current = progress;
@@ -542,43 +553,6 @@ export default function TranslateFile() {
       toast.success(successMessage);
     } catch {
       toast.error("Không thể sao chép nội dung.");
-    }
-  };
-
-  const getExportFilename = () => {
-    const sourceName = selectedFile?.file.name.replace(/\.[^.]+$/, "").trim();
-    const prefix = mode === "summarize" ? "ban-dich-tom-tat" : "ban-dich";
-
-    return sourceName ? `${prefix}-${sourceName}` : prefix;
-  };
-
-  const downloadTranslatedFile = async (format: TranslateExportFormat) => {
-    const text = translatedText.trim();
-    if (!text || exportingFormat) return;
-
-    setExportingFormat(format);
-
-    try {
-      const blob = await translateApi.exportTranslation({
-        text,
-        format,
-        filename: getExportFilename(),
-        title: outputTitle,
-      });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-
-      link.href = url;
-      link.download = `${getExportFilename()}.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success(`Đã tải ${format.toUpperCase()}.`);
-    } catch (error) {
-      toast.error(formatError(error));
-    } finally {
-      setExportingFormat(null);
     }
   };
 

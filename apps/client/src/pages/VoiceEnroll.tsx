@@ -1,11 +1,19 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { PageLayout } from "@/components/PageLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { VoiceUploadForm } from "@/feature/voice/components/voice-upload-form";
 import { useVoiceStore } from "@/feature/voice";
+import { useScrollOffset } from "@/hooks/use-scroll-offset";
+
+const ENROLL_FORM_SCROLL_OFFSET_Y = 96;
 
 export default function VoiceEnroll() {
   const { uploadResult, resetUploadResult } = useVoiceStore();
+  const [readyAudioFile, setReadyAudioFile] = useState<File | null>(null);
+  const { targetRef: registrationFieldsRef } = useScrollOffset<HTMLDivElement>({
+    offsetY: ENROLL_FORM_SCROLL_OFFSET_Y,
+    scrollKey: readyAudioFile,
+  });
 
   useEffect(() => {
     resetUploadResult();
@@ -20,7 +28,14 @@ export default function VoiceEnroll() {
       description="Tải file audio của người đăng ký để đăng ký giọng nói"
       titleClassName="font-playfair text-[34px] leading-[1.1] font-bold tracking-tight text-[#4b1d18] md:text-[42px]"
     >
-      <VoiceUploadForm onFileChange={resetUploadResult} />
+      <VoiceUploadForm
+        onFileChange={() => {
+          resetUploadResult();
+          setReadyAudioFile(null);
+        }}
+        onAudioFileReady={setReadyAudioFile}
+        registrationFieldsRef={registrationFieldsRef}
+      />
 
       {uploadResult ? (
         <Card className="rounded-2xl border-green-200">

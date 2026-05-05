@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoaderCircle, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Ref } from "react";
 import {
   useFieldArray,
   useForm,
@@ -39,6 +39,8 @@ interface VoiceUploadFormProps {
   initialEnd?: number;
   onUploadSuccess?: (data?: Partial<VoiceIdentifyTwoItem>) => void;
   onFileChange?: () => void;
+  onAudioFileReady?: (file: File | null) => void;
+  registrationFieldsRef?: Ref<HTMLDivElement>;
   compact?: boolean;
   playerKey?: number;
 }
@@ -80,6 +82,8 @@ export function VoiceUploadForm({
   initialEnd,
   onUploadSuccess,
   onFileChange,
+  onAudioFileReady,
+  registrationFieldsRef,
   compact = false,
   playerKey,
 }: VoiceUploadFormProps) {
@@ -121,6 +125,7 @@ export function VoiceUploadForm({
 
   const normalizeAndSetAudioFile = async (file: File | null) => {
     onFileChange?.();
+    onAudioFileReady?.(null);
 
     if (!file) {
       form.setValue("audioFile", null, { shouldValidate: true });
@@ -137,9 +142,11 @@ export function VoiceUploadForm({
         shouldTouch: true,
         shouldValidate: true,
       });
+      onAudioFileReady?.(normalizedFile);
       toast.success("Đã chuẩn hóa audio.", { id: toastId });
     } catch {
       form.setValue("audioFile", null, { shouldValidate: true });
+      onAudioFileReady?.(null);
       toast.error("Không thể chuẩn hóa audio. Vui lòng kiểm tra file gốc.", {
         id: toastId,
       });
@@ -236,7 +243,10 @@ export function VoiceUploadForm({
 
         {watchedAudioFile ? (
           <>
-            <div className="grid animate-in gap-4 fade-in-0 slide-in-from-bottom-4 duration-300 md:grid-cols-2">
+            <div
+              ref={registrationFieldsRef}
+              className="grid animate-in gap-4 fade-in-0 slide-in-from-bottom-4 duration-300 md:grid-cols-2"
+            >
               <FormField
                 control={form.control}
                 name="name"

@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import type { TranslateExportFormat } from "@/feature/translate/api/translate.api";
 import { translateApi } from "@/feature/translate/api/translate.api";
 import {
   AUTO_LANGUAGE,
@@ -30,6 +29,7 @@ import {
   LIVE_TRANSLATE_SOURCE_LANGUAGE_OPTIONS,
   TRANSLATION_LANGUAGES,
 } from "@/feature/translate/constants/translate.constants";
+import { useDownloadTranslatedFile } from "@/feature/translate/hooks/use-download-translated-file";
 import type { TranslateMode } from "@/feature/translate/types/translate.types";
 import {
   animateProgressTo,
@@ -70,11 +70,18 @@ export default function TranslateLive() {
   const [translatedText, setTranslatedText] = useState("");
   const [isTranslating, setIsTranslating] = useState(false);
   const [translateProgress, setTranslateProgress] = useState(0);
-  const [exportingFormat, setExportingFormat] =
-    useState<TranslateExportFormat | null>(null);
 
   const hasSourceText = sourceText.trim().length > 0;
   const outputTitle = mode === "summarize" ? "Bản dịch tóm tắt" : "Bản dịch";
+  const exportFilename =
+    mode === "summarize" ? "ban-dich-tom-tat-truc-tiep" : "ban-dich-truc-tiep";
+  const { downloadTranslatedFile, exportingFormat } = useDownloadTranslatedFile(
+    {
+      filename: exportFilename,
+      text: translatedText,
+      title: outputTitle,
+    },
+  );
 
   const updateTranslateProgress = useCallback((progress: number) => {
     translateProgressRef.current = progress;
@@ -269,40 +276,6 @@ export default function TranslateLive() {
       toast.success(successMessage);
     } catch {
       toast.error("Không thể sao chép nội dung.");
-    }
-  };
-
-  const getExportFilename = () =>
-    mode === "summarize" ? "ban-dich-tom-tat-truc-tiep" : "ban-dich-truc-tiep";
-
-  const downloadTranslatedFile = async (format: TranslateExportFormat) => {
-    const text = translatedText.trim();
-    if (!text || exportingFormat) return;
-
-    setExportingFormat(format);
-
-    try {
-      const filename = getExportFilename();
-      const blob = await translateApi.exportTranslation({
-        text,
-        format,
-        filename,
-        title: outputTitle,
-      });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-
-      link.href = url;
-      link.download = `${filename}.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success(`Đã tải ${format.toUpperCase()}.`);
-    } catch (error) {
-      toast.error(formatError(error));
-    } finally {
-      setExportingFormat(null);
     }
   };
 

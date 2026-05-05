@@ -7,8 +7,9 @@ import { VoiceErrorDialog } from "@/feature/voice/components/voice-error-dialog"
 import { VoiceMultiSearchForm } from "@/feature/voice/components/voice-multi-search-form";
 import { VoiceSpeakerResultCard } from "@/feature/voice/components/voice-speaker-result-card";
 import type { VoiceIdentifyTwoItem } from "@/feature/voice/types/voice.types";
+import { useScrollOffset } from "@/hooks/use-scroll-offset";
 import { LoaderCircle, UsersRound } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 const MULTI_SEARCH_FORM_ID = "voice-multi-search-form";
 const RESULT_SCROLL_OFFSET_Y = 96;
@@ -33,7 +34,10 @@ export default function VoiceSearchMulti() {
     end?: number;
   }>({});
   const [isSearching, setIsSearching] = useState(false);
-  const resultSectionRef = useRef<HTMLDivElement | null>(null);
+  const { targetRef: resultSectionRef } = useScrollOffset<HTMLDivElement>({
+    offsetY: RESULT_SCROLL_OFFSET_Y,
+    scrollKey: identifyTwoResult,
+  });
 
   const updateIdentifyTwoSpeaker = useVoiceStore(
     (state) => state.updateIdentifyTwoSpeaker,
@@ -48,27 +52,6 @@ export default function VoiceSearchMulti() {
 
   const items = identifyTwoResult?.items ?? [];
   const hasSearched = identifyTwoResult !== null;
-
-  useEffect(() => {
-    if (!identifyTwoResult) return;
-
-    const frameId = window.requestAnimationFrame(() => {
-      const resultSection = resultSectionRef.current;
-      if (!resultSection) return;
-
-      const targetTop =
-        resultSection.getBoundingClientRect().top +
-        window.scrollY -
-        RESULT_SCROLL_OFFSET_Y;
-
-      window.scrollTo({
-        top: Math.max(0, targetTop),
-        behavior: "smooth",
-      });
-    });
-
-    return () => window.cancelAnimationFrame(frameId);
-  }, [identifyTwoResult]);
 
   return (
     <>

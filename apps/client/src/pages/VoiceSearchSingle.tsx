@@ -19,6 +19,7 @@ import { VoiceSingleSearchForm } from "@/feature/voice/components/voice-single-s
 import { VoiceTop5MatchTable } from "@/feature/voice/components/voice-top5-match-table";
 import { useVoiceStore } from "@/feature/voice";
 import { voiceDirectoryApi } from "@/feature/voice-directory/api/voice-directory.api";
+import { useScrollOffset } from "@/hooks/use-scroll-offset";
 import type {
   VoiceIdentifyItem,
   VoiceIdentifyTwoItem,
@@ -26,6 +27,7 @@ import type {
 import type { ApiError } from "@/types";
 
 const SINGLE_SEARCH_FORM_ID = "voice-single-search-form";
+const RESULT_SCROLL_OFFSET_Y = 96;
 
 export default function VoiceSearchSingle() {
   const {
@@ -47,6 +49,10 @@ export default function VoiceSearchSingle() {
   const [deleteTarget, setDeleteTarget] = useState<VoiceIdentifyItem | null>(
     null,
   );
+  const { targetRef: resultSectionRef } = useScrollOffset<HTMLDivElement>({
+    offsetY: RESULT_SCROLL_OFFSET_Y,
+    scrollKey: identifyResult,
+  });
 
   useEffect(() => {
     resetIdentifyResult();
@@ -164,20 +170,22 @@ export default function VoiceSearchSingle() {
         />
 
         {hasSearchResult ? (
-          <VoiceTop5MatchTable
-            title="Kết quả phù hợp"
-            description="Sắp xếp theo điểm số giảm dần."
-            items={items}
-            emptyText="Chưa có kết quả nhận diện."
-            fallbackAudioFile={audioFile}
-            onRegisterItem={openRegisterDialog}
-            onDeleteItem={setDeleteTarget}
-            deletingUserId={
-              deleteVoiceMutation.isPending
-                ? (deleteTarget?.user_id ?? null)
-                : null
-            }
-          />
+          <div ref={resultSectionRef}>
+            <VoiceTop5MatchTable
+              title="Kết quả phù hợp"
+              description="Sắp xếp theo điểm số giảm dần."
+              items={items}
+              emptyText="Chưa có kết quả nhận diện."
+              fallbackAudioFile={audioFile}
+              onRegisterItem={openRegisterDialog}
+              onDeleteItem={setDeleteTarget}
+              deletingUserId={
+                deleteVoiceMutation.isPending
+                  ? (deleteTarget?.user_id ?? null)
+                  : null
+              }
+            />
+          </div>
         ) : null}
 
         {hasAudioFile ? (

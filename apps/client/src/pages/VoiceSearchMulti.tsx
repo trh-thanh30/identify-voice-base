@@ -60,6 +60,9 @@ export default function VoiceSearchMulti() {
 
   const items = identifyTwoResult?.items ?? [];
   const hasSearched = identifyTwoResult !== null;
+  const refreshIdentify = () => {
+    searchFormRef.current?.submitCurrent();
+  };
 
   const handleSelectPreviewAudio = (file: File) => {
     setAudioFile(file);
@@ -68,9 +71,8 @@ export default function VoiceSearchMulti() {
     setSelectedSpeakerIndex(null);
     setSelectedSegment({});
     resetIdentifyTwoResult();
-    searchFormRef.current?.replaceAudioFile(file, {
-      suppressAutoSubmit: true,
-    });
+    searchFormRef.current?.replaceAudioFile(file);
+    searchFormRef.current?.submitCurrent();
   };
 
   return (
@@ -144,6 +146,7 @@ export default function VoiceSearchMulti() {
                       title={`Người nói ${index + 1}`}
                       item={item}
                       speakerIndex={index}
+                      onRefreshIdentify={refreshIdentify}
                       onSelectSegment={(start, end) =>
                         setSelectedSegment({ start, end })
                       }

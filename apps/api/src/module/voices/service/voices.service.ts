@@ -6,6 +6,7 @@ import { FindAllVoicesUseCase } from '../use-cases/find-all-voices.usecase';
 import { GetVoiceDetailUseCase } from '../use-cases/get-voice-detail.usecase';
 import { UpdateVoiceInfoUseCase } from '../use-cases/update-voice-info.usecase';
 import { UpdateVoiceEmbeddingUseCase } from '../use-cases/update-voice-embedding.usecase';
+import { DenoiseEnrollAudioUseCase } from '../use-cases/denoise-enroll-audio.usecase';
 
 @Injectable()
 export class VoicesService {
@@ -15,6 +16,7 @@ export class VoicesService {
     private readonly updateVoiceInfoUseCase: UpdateVoiceInfoUseCase,
     private readonly deleteVoiceUseCase: DeleteVoiceUseCase,
     private readonly updateVoiceEmbeddingUseCase: UpdateVoiceEmbeddingUseCase,
+    private readonly denoiseEnrollAudioUseCase: DenoiseEnrollAudioUseCase,
   ) {}
 
   async findAll(filter: VoiceFilterDto) {
@@ -35,5 +37,17 @@ export class VoicesService {
 
   async updateEmbedding(userId: string, audioIds: string[], adminId: string) {
     return this.updateVoiceEmbeddingUseCase.execute(userId, audioIds, adminId);
+  }
+
+  async denoiseEnrollAudio(
+    userId: string,
+    adminId: string,
+    filteredAudio?: Express.Multer.File,
+  ) {
+    return this.denoiseEnrollAudioUseCase.execute(
+      userId,
+      adminId,
+      filteredAudio,
+    );
   }
 }

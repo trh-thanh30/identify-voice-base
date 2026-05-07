@@ -44,6 +44,7 @@ export interface VoiceSingleSearchFormHandle {
       suppressAutoSubmit?: boolean;
     },
   ) => void;
+  submitCurrent: () => void;
 }
 
 function getAudioFileKey(file: File | null) {
@@ -155,8 +156,11 @@ export const VoiceSingleSearchForm = forwardRef<
           suppressAutoSubmit: options?.suppressAutoSubmit,
         });
       },
+      submitCurrent: () => {
+        void form.handleSubmit(onSubmit)();
+      },
     }),
-    [applyAudioFile],
+    [applyAudioFile, form, onSubmit],
   );
 
   useEffect(() => {

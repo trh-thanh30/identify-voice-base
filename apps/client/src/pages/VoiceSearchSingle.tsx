@@ -33,6 +33,14 @@ import type { ApiError } from "@/types";
 const SINGLE_SEARCH_FORM_ID = "voice-single-search-form";
 const RESULT_SCROLL_OFFSET_Y = 96;
 
+function getDeleteVoiceId(item: VoiceIdentifyItem | null) {
+  return item?.matched_voice_id || item?.voice_id || "";
+}
+
+function getDeleteKey(item: VoiceIdentifyItem | null) {
+  return item?.user_id || getDeleteVoiceId(item);
+}
+
 export default function VoiceSearchSingle() {
   const {
     identifyResult,
@@ -72,17 +80,33 @@ export default function VoiceSearchSingle() {
   const items = identifyResult?.items ?? [];
   const hasAudioFile = Boolean(audioFile);
   const hasSearchResult = identifyResult !== null;
+  const refreshIdentify = () => {
+    searchFormRef.current?.submitCurrent();
+  };
 
   const deleteVoiceMutation = useMutation({
     mutationFn: async (target: VoiceIdentifyItem) => {
-      if (!target.user_id) {
-        throw new Error("Thiếu user_id để xóa hồ sơ.");
+      if (target.user_id) {
+        await voiceDirectoryApi.deleteVoice(target.user_id);
+        return "business";
       }
-      await voiceDirectoryApi.deleteVoice(target.user_id);
+
+      const voiceId = getDeleteVoiceId(target);
+      if (!voiceId) {
+        throw new Error("Thiếu voice_id để xóa trong AI Core.");
+      }
+
+      await voiceDirectoryApi.deleteAiCoreVoice(voiceId);
+      return "ai-core";
     },
-    onSuccess: () => {
-      toast.success("Đã xóa hồ sơ giọng nói.");
+    onSuccess: (source) => {
+      toast.success(
+        source === "ai-core"
+          ? "Đã xóa voice khỏi cơ sở dữ liệu AI Core."
+          : "Đã xóa hồ sơ giọng nói.",
+      );
       setDeleteTarget(null);
+      refreshIdentify();
     },
     onError: (err: unknown) => {
       const msg =
@@ -136,9 +160,8 @@ export default function VoiceSearchSingle() {
     setSelectedRegisterIndex(null);
     setDeleteTarget(null);
     resetIdentifyResult();
-    searchFormRef.current?.replaceAudioFile(file, {
-      suppressAutoSubmit: true,
-    });
+    searchFormRef.current?.replaceAudioFile(file);
+    searchFormRef.current?.submitCurrent();
   };
 
   return (
@@ -206,9 +229,10 @@ export default function VoiceSearchSingle() {
               fallbackAudioFile={audioFile}
               onRegisterItem={openRegisterDialog}
               onDeleteItem={setDeleteTarget}
+              onResultsChange={refreshIdentify}
               deletingUserId={
                 deleteVoiceMutation.isPending
-                  ? (deleteTarget?.user_id ?? null)
+                  ? getDeleteKey(deleteTarget)
                   : null
               }
             />
@@ -260,11 +284,19 @@ export default function VoiceSearchSingle() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Xóa hồ sơ giọng nói?</DialogTitle>
+            <DialogTitle>
+              {deleteTarget?.user_id
+                ? "Xóa hồ sơ giọng nói?"
+                : "Xóa voice trong AI Core?"}
+            </DialogTitle>
             <DialogDescription>
-              {deleteTarget?.name
-                ? `Bạn sắp xóa hồ sơ của ${deleteTarget.name}. Thao tác này sẽ gọi API xóa trên backend và gỡ hồ sơ khỏi nhận dạng mới.`
-                : "Bạn sắp xóa hồ sơ giọng nói này. Thao tác này sẽ gọi API xóa trên backend và gỡ hồ sơ khỏi nhận dạng mới."}
+              {deleteTarget?.user_id
+                ? deleteTarget.name
+                  ? `Bạn sắp xóa hồ sơ của ${deleteTarget.name}. Thao tác này sẽ gọi API xóa trên backend và gỡ hồ sơ khỏi nhận dạng mới.`
+                  : "Bạn sắp xóa hồ sơ giọng nói này. Thao tác này sẽ gọi API xóa trên backend và gỡ hồ sơ khỏi nhận dạng mới."
+                : deleteTarget?.name
+                  ? `Bạn sắp xóa voice ${deleteTarget.name} trong cơ sở dữ liệu của AI Core. Voice này chưa có hồ sơ trong database nghiệp vụ.`
+                  : "Bạn sắp xóa voice này trong cơ sở dữ liệu của AI Core. Voice này chưa có hồ sơ trong database nghiệp vụ."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">

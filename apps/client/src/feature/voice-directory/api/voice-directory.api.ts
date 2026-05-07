@@ -2,6 +2,7 @@ import axiosInstance from "@/api/axios.instance";
 import { VOICE_API_ENDPOINTS } from "@/constants";
 import type { ApiResponse } from "@/types";
 import type {
+  DenoiseEnrollAudioResponse,
   VoiceDirectorySearchField,
   SessionDetailForAudio,
   UpdateEmbeddingJobResponse,
@@ -65,6 +66,12 @@ export const voiceDirectoryApi = {
     );
   },
 
+  async deleteAiCoreVoice(voiceId: string): Promise<void> {
+    await axiosInstance.delete(
+      `/ai-core/voices/${encodeURIComponent(voiceId)}`,
+    );
+  },
+
   async updateVoiceFromAudios(
     voiceId: string,
     audioIds: string[],
@@ -75,6 +82,21 @@ export const voiceDirectoryApi = {
       audioIds,
     });
     return unwrapApiData<UpdateEmbeddingJobResponse>(response.data);
+  },
+
+  async denoiseEnrollAudio(
+    userId: string,
+    filteredAudioFile?: File,
+  ): Promise<DenoiseEnrollAudioResponse> {
+    const body = filteredAudioFile ? new FormData() : undefined;
+    if (body && filteredAudioFile) {
+      body.append("audio", filteredAudioFile);
+    }
+
+    const response = await axiosInstance.post<
+      ApiResponse<DenoiseEnrollAudioResponse>
+    >(`${VOICE_API_ENDPOINTS.VOICES}/${userId}/denoise-enroll-audio`, body);
+    return unwrapApiData<DenoiseEnrollAudioResponse>(response.data);
   },
 
   async getSessionDetail(sessionId: string): Promise<SessionDetailForAudio> {

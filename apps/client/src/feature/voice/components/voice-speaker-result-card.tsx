@@ -33,6 +33,7 @@ interface VoiceSpeakerResultCardProps {
   item: VoiceIdentifyTwoItem;
   onRegisterUnknown: (item?: VoiceIdentifyItem) => void;
   onSelectSegment?: (start: number, end?: number) => void;
+  onRefreshIdentify?: () => void;
   speakerIndex?: number;
 }
 
@@ -59,11 +60,20 @@ function isUnknownSpeaker(item: VoiceIdentifyTwoItem) {
   );
 }
 
+function getDeleteVoiceId(item: VoiceIdentifyItem | null) {
+  return item?.matched_voice_id || item?.voice_id || "";
+}
+
+function getDeleteKey(item: VoiceIdentifyItem | null) {
+  return item?.user_id || getDeleteVoiceId(item);
+}
+
 export function VoiceSpeakerResultCard({
   title,
   item,
   onRegisterUnknown,
   onSelectSegment,
+  onRefreshIdentify,
   speakerIndex = 0,
 }: VoiceSpeakerResultCardProps) {
   const [isTimestampOpen, setIsTimestampOpen] = useState(true);
@@ -84,14 +94,27 @@ export function VoiceSpeakerResultCard({
 
   const deleteVoiceMutation = useMutation({
     mutationFn: async (target: VoiceIdentifyItem) => {
-      if (!target.user_id) {
-        throw new Error("Thiếu user_id để xóa hồ sơ.");
+      if (target.user_id) {
+        await voiceDirectoryApi.deleteVoice(target.user_id);
+        return "business";
       }
-      await voiceDirectoryApi.deleteVoice(target.user_id);
+
+      const voiceId = getDeleteVoiceId(target);
+      if (!voiceId) {
+        throw new Error("Thiếu voice_id để xóa trong AI Core.");
+      }
+
+      await voiceDirectoryApi.deleteAiCoreVoice(voiceId);
+      return "ai-core";
     },
-    onSuccess: () => {
-      toast.success("Đã xóa hồ sơ giọng nói.");
+    onSuccess: (source) => {
+      toast.success(
+        source === "ai-core"
+          ? "Đã xóa voice khỏi cơ sở dữ liệu AI Core."
+          : "Đã xóa hồ sơ giọng nói.",
+      );
       setDeleteTarget(null);
+      onRefreshIdentify?.();
     },
     onError: (err: unknown) => {
       const msg =
@@ -187,9 +210,10 @@ export function VoiceSpeakerResultCard({
               speakerIndex={speakerIndex}
               onRegisterItem={onRegisterUnknown}
               onDeleteItem={setDeleteTarget}
+              onResultsChange={onRefreshIdentify}
               deletingUserId={
                 deleteVoiceMutation.isPending
-                  ? (deleteTarget?.user_id ?? null)
+                  ? getDeleteKey(deleteTarget)
                   : null
               }
             />
@@ -231,11 +255,19 @@ export function VoiceSpeakerResultCard({
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Xóa hồ sơ giọng nói?</DialogTitle>
+            <DialogTitle>
+              {deleteTarget?.user_id
+                ? "Xóa hồ sơ giọng nói?"
+                : "Xóa voice trong AI Core?"}
+            </DialogTitle>
             <DialogDescription>
-              {deleteTarget?.name
-                ? `Bạn sắp xóa hồ sơ của ${deleteTarget.name}. Thao tác này sẽ gọi API xóa trên backend và gỡ hồ sơ khỏi nhận dạng mới.`
-                : "Bạn sắp xóa hồ sơ giọng nói này. Thao tác này sẽ gọi API xóa trên backend và gỡ hồ sơ khỏi nhận dạng mới."}
+              {deleteTarget?.user_id
+                ? deleteTarget.name
+                  ? `Bạn sắp xóa hồ sơ của ${deleteTarget.name}. Thao tác này sẽ gọi API xóa trên backend và gỡ hồ sơ khỏi nhận dạng mới.`
+                  : "Bạn sắp xóa hồ sơ giọng nói này. Thao tác này sẽ gọi API xóa trên backend và gỡ hồ sơ khỏi nhận dạng mới."
+                : deleteTarget?.name
+                  ? `Bạn sắp xóa voice ${deleteTarget.name} trong cơ sở dữ liệu của AI Core. Voice này chưa có hồ sơ trong database nghiệp vụ.`
+                  : "Bạn sắp xóa voice này trong cơ sở dữ liệu của AI Core. Voice này chưa có hồ sơ trong database nghiệp vụ."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">

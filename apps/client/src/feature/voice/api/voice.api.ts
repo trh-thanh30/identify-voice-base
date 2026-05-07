@@ -303,7 +303,7 @@ export const voiceApi = {
     });
   },
 
-  async filterNoise(file: File): Promise<File> {
+  async filterNoise(file: File, signal?: AbortSignal): Promise<File> {
     const formData = new FormData();
     formData.append("file", file);
 
@@ -312,6 +312,7 @@ export const voiceApi = {
       formData,
       {
         responseType: "blob",
+        signal,
       },
     );
 

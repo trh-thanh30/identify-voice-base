@@ -1,4 +1,4 @@
-import { OCR, S2T, TRANSLATE } from '@/common/auth/permissions';
+import { OCR, S2T, TRANSLATE, VOICES } from '@/common/auth/permissions';
 import { ApiSuccess, Permissions, RawResponse } from '@/common/decorators';
 import { User } from '@/common/decorators/user.decorator';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
@@ -6,6 +6,7 @@ import { PermissionsGuard } from '@/common/guards/permissions.guard';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -148,6 +149,23 @@ export class AiCoreController {
     res.once('close', cleanup);
 
     createReadStream(filteredAudio.path).pipe(res);
+  }
+
+  @Delete('voices/:voiceId')
+  @ApiOperation({
+    summary: 'Xóa voice trực tiếp khỏi AI Core',
+    description:
+      'Dùng cho danh tính chỉ tồn tại trong AI Core, chưa có hồ sơ trong database nghiệp vụ.',
+  })
+  @ApiSuccess('Xóa voice khỏi AI Core thành công!')
+  @Permissions([VOICES.DELETE])
+  async deleteAiCoreVoice(@Param('voiceId') voiceId: string) {
+    await this.aiCoreService.deleteVoice(voiceId);
+
+    return {
+      voice_id: voiceId,
+      deleted: true,
+    };
   }
 
   @Post('ocr')

@@ -255,6 +255,8 @@ export function VoiceUploadForm({
           key={playerKey}
           file={previewAudioUrl ? null : (watchedAudioFile ?? null)}
           audioUrl={previewAudioUrl}
+          isLoading={isNormalizingAudio}
+          loadingText="Đang chuẩn hóa audio..."
           title={
             isNormalizingAudio
               ? "Đang chuẩn hóa audio đăng ký..."

@@ -53,6 +53,7 @@ interface VoiceSpeakerMatchTableProps {
   onDeleteItem?: (item: VoiceIdentifyItem) => void;
   deletingUserId?: string | null;
   onRegisterItem?: (item: VoiceIdentifyItem) => void;
+  onResultsChange?: () => void;
 }
 
 interface AudioDialogState {
@@ -62,6 +63,10 @@ interface AudioDialogState {
 }
 
 function getItemAudioUrl(item: VoiceIdentifyItem) {
+  if (item.truth_source === "BUSINESS" && item.enroll_audio_url) {
+    return item.enroll_audio_url;
+  }
+
   return item.audio_url || item.enroll_audio_url || undefined;
 }
 
@@ -80,6 +85,14 @@ function getDetailVoiceId(item: VoiceIdentifyItem) {
   if (item.truth_source === "AI" || item.truth_source === "NONE") return null;
 
   return candidate;
+}
+
+function getDeleteVoiceId(item: VoiceIdentifyItem) {
+  return item.matched_voice_id || item.voice_id || "";
+}
+
+function getDeleteKey(item: VoiceIdentifyItem) {
+  return item.user_id || getDeleteVoiceId(item);
 }
 
 function GenderPill({ gender }: { gender?: VoiceIdentifyItem["gender"] }) {
@@ -174,6 +187,7 @@ export function VoiceSpeakerMatchTable({
   onDeleteItem,
   deletingUserId = null,
   onRegisterItem,
+  onResultsChange,
 }: VoiceSpeakerMatchTableProps) {
   const [audioDialog, setAudioDialog] = useState<AudioDialogState | null>(null);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
@@ -200,6 +214,7 @@ export function VoiceSpeakerMatchTable({
         gender: payload.gender ?? undefined,
       },
     }));
+    onResultsChange?.();
   };
 
   return (
@@ -257,6 +272,8 @@ export function VoiceSpeakerMatchTable({
                     const rowAudioUrl = getItemAudioUrl(displayItem);
                     const scoreMeta = getVoiceScoreMeta(displayItem.score);
                     const audioLabel = getItemAudioLabel(displayItem, index);
+                    const deleteKey = getDeleteKey(displayItem);
+                    const isDeleteable = Boolean(deleteKey);
 
                     return (
                       <TableRow
@@ -389,13 +406,10 @@ export function VoiceSpeakerMatchTable({
                                       size="icon-sm"
                                       variant="destructive"
                                       className="size-8 rounded-full"
-                                      onClick={() =>
-                                        displayItem.user_id &&
-                                        onDeleteItem(displayItem)
-                                      }
+                                      onClick={() => onDeleteItem(displayItem)}
                                       disabled={
-                                        !displayItem.user_id ||
-                                        deletingUserId === displayItem.user_id
+                                        !isDeleteable ||
+                                        deletingUserId === deleteKey
                                       }
                                       aria-label={`Xóa hồ sơ của ${audioLabel.personName}`}
                                     >
@@ -403,11 +417,13 @@ export function VoiceSpeakerMatchTable({
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    {!displayItem.user_id
-                                      ? "Chỉ xóa được hồ sơ đã đăng ký"
-                                      : deletingUserId === displayItem.user_id
-                                        ? "Đang xóa hồ sơ"
-                                        : `Xóa hồ sơ của ${audioLabel.personName}`}
+                                    {!isDeleteable
+                                      ? "Không có voice_id để xóa"
+                                      : deletingUserId === deleteKey
+                                        ? "Đang xóa voice"
+                                        : displayItem.user_id
+                                          ? `Xóa hồ sơ của ${audioLabel.personName}`
+                                          : "Xóa voice trong cơ sở dữ liệu AI Core"}
                                   </TooltipContent>
                                 </Tooltip>
                               ) : null}
@@ -461,6 +477,7 @@ export function VoiceSpeakerMatchTable({
         onDeactivated={() => {
           setDetailOpen(false);
           setSelectedVoiceId(null);
+          onResultsChange?.();
         }}
         onUpdated={handleProfileUpdated}
       />

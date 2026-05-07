@@ -8,7 +8,7 @@ import {
 import { formatError } from "@/utils";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, AudioLines, LoaderCircle } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { voiceApi } from "../api/voice.api";
 import { VoiceAudioPlayer } from "./voice-audio-player";
@@ -24,14 +24,33 @@ export function VoiceFilterNoiseDialog({
 }: VoiceFilterNoiseDialogProps) {
   const [open, setOpen] = useState(false);
   const [filteredAudioFile, setFilteredAudioFile] = useState<File | null>(null);
+  const filterAbortRef = useRef<AbortController | null>(null);
 
   const filterNoiseMutation = useMutation({
-    mutationFn: async (file: File) => voiceApi.filterNoise(file),
+    mutationFn: async (file: File) => {
+      filterAbortRef.current?.abort();
+      const controller = new AbortController();
+      filterAbortRef.current = controller;
+
+      return voiceApi.filterNoise(file, controller.signal);
+    },
     onSuccess: (file) => {
       setFilteredAudioFile(file);
     },
     onError: (error) => {
+      if (
+        error &&
+        typeof error === "object" &&
+        "name" in error &&
+        error.name === "CanceledError"
+      ) {
+        return;
+      }
+
       toast.error(formatError(error));
+    },
+    onSettled: () => {
+      filterAbortRef.current = null;
     },
   });
 
@@ -50,6 +69,7 @@ export function VoiceFilterNoiseDialog({
       return;
     }
 
+    filterAbortRef.current?.abort();
     onSelectAudio(sourceFile);
     setOpen(false);
   };
@@ -61,6 +81,14 @@ export function VoiceFilterNoiseDialog({
 
     onSelectAudio(filteredAudioFile);
     setOpen(false);
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      filterAbortRef.current?.abort();
+    }
+
+    setOpen(nextOpen);
   };
 
   return (
@@ -85,7 +113,7 @@ export function VoiceFilterNoiseDialog({
         )}
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-6xl">
           <DialogHeader>
             <DialogTitle>Lọc audio</DialogTitle>

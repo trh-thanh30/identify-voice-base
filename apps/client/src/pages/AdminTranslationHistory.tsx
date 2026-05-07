@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   Copy,
@@ -59,12 +59,15 @@ import {
   getFileTypeLabel,
   getLanguageLabel,
 } from "@/feature/translate/utils/translation-history.utils";
+import { useScrollOffset } from "@/hooks/use-scroll-offset";
 import { formatError } from "@/utils";
 
 const ALL_LANGUAGES = "all";
+const PAGINATION_SCROLL_OFFSET_Y = 128;
 
 export default function AdminTranslationHistory() {
   const [page, setPage] = useState(1);
+  const [paginationScrollKey, setPaginationScrollKey] = useState(0);
   const [pageSize, setPageSize] = useState<10 | 25 | 50>(10);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -95,6 +98,7 @@ export default function AdminTranslationHistory() {
         source_lang: sourceLang === ALL_LANGUAGES ? undefined : sourceLang,
         target_lang: targetLang === ALL_LANGUAGES ? undefined : targetLang,
       }),
+    placeholderData: keepPreviousData,
   });
 
   const items = historyQuery.data?.items ?? [];
@@ -107,6 +111,14 @@ export default function AdminTranslationHistory() {
   const lastRecordIndex = Math.min(page * pageSize, totalRecords);
   const canGoPrevious = page > 1;
   const canGoNext = page < totalPages;
+  const { targetRef: listTopRef, scrollToOffset } =
+    useScrollOffset<HTMLDivElement>({
+      behavior: "auto",
+      enabled: paginationScrollKey > 0,
+      offsetY: PAGINATION_SCROLL_OFFSET_Y,
+      scrollElement: true,
+      scrollKey: paginationScrollKey,
+    });
 
   const resetFilters = () => {
     setFromDate("");
@@ -115,6 +127,15 @@ export default function AdminTranslationHistory() {
     setTargetLang(ALL_LANGUAGES);
     setPageSize(10);
     setPage(1);
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    const clampedPage = Math.min(Math.max(nextPage, 1), totalPages);
+    if (clampedPage === page) return;
+
+    scrollToOffset();
+    setPage(clampedPage);
+    setPaginationScrollKey((current) => current + 1);
   };
 
   const copyText = async (text: string, successMessage: string) => {
@@ -311,7 +332,10 @@ export default function AdminTranslationHistory() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-md border border-slate-200 bg-white shadow-sm">
+      <div
+        ref={listTopRef}
+        className="min-h-0 flex-1 overflow-auto rounded-md border border-slate-200 bg-white shadow-sm"
+      >
         {historyQuery.isLoading ? (
           <div className="flex min-h-64 items-center justify-center">
             <Loader2 className="size-8 animate-spin text-slate-400" />
@@ -429,7 +453,7 @@ export default function AdminTranslationHistory() {
                 onClick={(event) => {
                   event.preventDefault();
                   if (!canGoPrevious) return;
-                  setPage((current) => Math.max(1, current - 1));
+                  handlePageChange(page - 1);
                 }}
               />
             </PaginationItem>
@@ -444,7 +468,7 @@ export default function AdminTranslationHistory() {
                     isActive={item === page}
                     onClick={(event) => {
                       event.preventDefault();
-                      setPage(item);
+                      handlePageChange(item);
                     }}
                   >
                     {item}
@@ -458,7 +482,7 @@ export default function AdminTranslationHistory() {
                 onClick={(event) => {
                   event.preventDefault();
                   if (!canGoNext) return;
-                  setPage((current) => Math.min(totalPages, current + 1));
+                  handlePageChange(page + 1);
                 }}
               />
             </PaginationItem>

@@ -1,7 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type SubmitHandler } from "react-hook-form";
 import { LoaderCircle, Search } from "lucide-react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -12,15 +20,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { voiceApi } from "../api/voice.api";
+import { useIdentifyVoice } from "../hooks/use-voice";
 import {
   identifyVoiceSchema,
   type IdentifyVoiceSchemaInput,
   type IdentifyVoiceSchemaOutput,
 } from "../schemas/voice.schema";
-import { useIdentifyVoice } from "../hooks/use-voice";
 import { VoiceAudioDropzone } from "./voice-audio-dropzone";
-import { voiceApi } from "../api/voice.api";
-import { toast } from "sonner";
 
 interface VoiceSingleSearchFormProps {
   formId?: string;
@@ -30,18 +37,34 @@ interface VoiceSingleSearchFormProps {
   autoSubmitOnAudioChange?: boolean;
 }
 
+export interface VoiceSingleSearchFormHandle {
+  replaceAudioFile: (
+    file: File | null,
+    options?: {
+      suppressAutoSubmit?: boolean;
+    },
+  ) => void;
+  submitCurrent: () => void;
+}
+
 function getAudioFileKey(file: File | null) {
   if (!file) return null;
   return `${file.name}-${file.size}-${file.lastModified}`;
 }
 
-export function VoiceSingleSearchForm({
-  formId,
-  onFileSelected,
-  onPendingChange,
-  showSubmitButton = true,
-  autoSubmitOnAudioChange = false,
-}: VoiceSingleSearchFormProps) {
+export const VoiceSingleSearchForm = forwardRef<
+  VoiceSingleSearchFormHandle,
+  VoiceSingleSearchFormProps
+>(function VoiceSingleSearchForm(
+  {
+    formId,
+    onFileSelected,
+    onPendingChange,
+    showSubmitButton = true,
+    autoSubmitOnAudioChange = false,
+  },
+  ref,
+) {
   const identifyMutation = useIdentifyVoice();
   const lastAutoSubmittedFileKeyRef = useRef<string | null>(null);
   const [isNormalizingAudio, setIsNormalizingAudio] = useState(false);
@@ -58,6 +81,31 @@ export function VoiceSingleSearchForm({
   });
   const audioFile = form.watch("audioFile");
 
+  const applyAudioFile = useCallback(
+    (
+      file: File | null,
+      options?: {
+        suppressAutoSubmit?: boolean;
+        shouldTouch?: boolean;
+      },
+    ) => {
+      const fileKey = getAudioFileKey(file);
+
+      if (options?.suppressAutoSubmit) {
+        lastAutoSubmittedFileKeyRef.current = fileKey;
+      } else if (!fileKey) {
+        lastAutoSubmittedFileKeyRef.current = null;
+      }
+
+      form.setValue("audioFile", file, {
+        shouldDirty: true,
+        shouldTouch: options?.shouldTouch ?? true,
+        shouldValidate: true,
+      });
+    },
+    [form],
+  );
+
   useEffect(() => {
     onPendingChange?.(identifyMutation.isPending || isNormalizingAudio);
 
@@ -68,7 +116,7 @@ export function VoiceSingleSearchForm({
 
   const normalizeAndSetAudioFile = async (file: File | null) => {
     if (!file) {
-      form.setValue("audioFile", null, { shouldValidate: true });
+      applyAudioFile(null, { shouldTouch: false });
       onFileSelected?.(null);
       return;
     }
@@ -79,15 +127,11 @@ export function VoiceSingleSearchForm({
 
     try {
       const normalizedFile = await voiceApi.normalizeAudio(file);
-      form.setValue("audioFile", normalizedFile, {
-        shouldDirty: true,
-        shouldTouch: true,
-        shouldValidate: true,
-      });
+      applyAudioFile(normalizedFile);
       onFileSelected?.(normalizedFile);
       toast.success("Đã chuẩn hóa audio.", { id: toastId });
     } catch {
-      form.setValue("audioFile", null, { shouldValidate: true });
+      applyAudioFile(null, { shouldTouch: false });
       onFileSelected?.(null);
       toast.error("Không thể chuẩn hóa audio. Vui lòng kiểm tra file gốc.", {
         id: toastId,
@@ -99,10 +143,24 @@ export function VoiceSingleSearchForm({
 
   const onSubmit = useCallback<SubmitHandler<IdentifyVoiceSchemaOutput>>(
     async (values) => {
-      onFileSelected?.(values.audioFile);
       await identifyMutation.mutateAsync(values);
     },
-    [identifyMutation, onFileSelected],
+    [identifyMutation],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      replaceAudioFile: (file, options) => {
+        applyAudioFile(file, {
+          suppressAutoSubmit: options?.suppressAutoSubmit,
+        });
+      },
+      submitCurrent: () => {
+        void form.handleSubmit(onSubmit)();
+      },
+    }),
+    [applyAudioFile, form, onSubmit],
   );
 
   useEffect(() => {
@@ -194,4 +252,4 @@ export function VoiceSingleSearchForm({
       </CardContent>
     </Card>
   );
-}
+});

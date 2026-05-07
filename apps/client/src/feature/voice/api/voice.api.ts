@@ -303,6 +303,27 @@ export const voiceApi = {
     });
   },
 
+  async filterNoise(file: File, signal?: AbortSignal): Promise<File> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await axiosInstance.post<Blob>(
+      "/ai-core/filter-noise",
+      formData,
+      {
+        responseType: "blob",
+        signal,
+      },
+    );
+
+    const sourceName = file.name.replace(/\.[^.]+$/, "").trim() || "audio";
+
+    return new File([response.data], `${sourceName}-filtered.wav`, {
+      type: "audio/wav",
+      lastModified: Date.now(),
+    });
+  },
+
   async uploadVoice(payload: UploadVoiceRequest): Promise<UploadVoiceResponse> {
     const formData = buildUploadVoiceFormData(payload);
 

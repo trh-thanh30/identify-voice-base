@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   CalendarDays,
   ChevronRight,
@@ -39,6 +39,9 @@ import {
 import { QUERY_KEYS } from "@/constants";
 import { sessionsApi } from "@/feature/sessions/api/sessions.api";
 import { SessionDetailSheet } from "@/feature/sessions/components/SessionDetailSheet";
+import { useScrollOffset } from "@/hooks/use-scroll-offset";
+
+const PAGINATION_SCROLL_OFFSET_Y = 128;
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString("vi-VN");
@@ -105,6 +108,7 @@ function getScoreMeta(score: number | null) {
 
 export default function VoiceSessionHistory() {
   const [page, setPage] = useState(1);
+  const [paginationScrollKey, setPaginationScrollKey] = useState(0);
   const [pageSize, setPageSize] = useState<10 | 25 | 50>(10);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -127,16 +131,34 @@ export default function VoiceSessionHistory() {
         from_date: fromDate || undefined,
         to_date: toDate || undefined,
       }),
+    placeholderData: keepPreviousData,
   });
 
   const items = sessionsQuery.data?.items ?? [];
   const pagination = sessionsQuery.data?.pagination;
   const totalPages = pagination?.total_pages ?? 1;
   const paginationItems = buildPaginationItems(page, totalPages);
+  const { targetRef: listTopRef, scrollToOffset } =
+    useScrollOffset<HTMLDivElement>({
+      behavior: "auto",
+      enabled: paginationScrollKey > 0,
+      offsetY: PAGINATION_SCROLL_OFFSET_Y,
+      scrollElement: true,
+      scrollKey: paginationScrollKey,
+    });
 
   const openDetail = (sessionId: string) => {
     setSelectedSessionId(sessionId);
     setDetailOpen(true);
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    const clampedPage = Math.min(Math.max(nextPage, 1), totalPages);
+    if (clampedPage === page) return;
+
+    scrollToOffset();
+    setPage(clampedPage);
+    setPaginationScrollKey((current) => current + 1);
   };
 
   return (
@@ -213,7 +235,10 @@ export default function VoiceSessionHistory() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div
+        ref={listTopRef}
+        className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-sm"
+      >
         {sessionsQuery.isLoading ? (
           <div className="flex min-h-64 items-center justify-center">
             <Loader2 className="size-8 animate-spin text-slate-400" />
@@ -324,7 +349,7 @@ export default function VoiceSessionHistory() {
               <PaginationItem>
                 <PaginationPrevious
                   type="button"
-                  onClick={() => setPage((current) => Math.max(current - 1, 1))}
+                  onClick={() => handlePageChange(page - 1)}
                   disabled={page <= 1 || sessionsQuery.isFetching}
                 />
               </PaginationItem>
@@ -336,7 +361,7 @@ export default function VoiceSessionHistory() {
                     <PaginationLink
                       type="button"
                       isActive={item === page}
-                      onClick={() => setPage(item)}
+                      onClick={() => handlePageChange(item)}
                       disabled={sessionsQuery.isFetching}
                     >
                       {item}
@@ -347,9 +372,7 @@ export default function VoiceSessionHistory() {
               <PaginationItem>
                 <PaginationNext
                   type="button"
-                  onClick={() =>
-                    setPage((current) => Math.min(current + 1, totalPages))
-                  }
+                  onClick={() => handlePageChange(page + 1)}
                   disabled={page >= totalPages || sessionsQuery.isFetching}
                 />
               </PaginationItem>

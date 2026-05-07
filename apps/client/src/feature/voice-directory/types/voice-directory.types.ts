@@ -96,6 +96,15 @@ export interface UpdateEmbeddingJobResponse {
   created_at: string;
 }
 
+export interface DenoiseEnrollAudioResponse {
+  user_id: string;
+  voice_id: string;
+  voice_record_id: string;
+  audio_file_id: string;
+  audio_url: string;
+  updated_at: string;
+}
+
 export interface SessionDetailForAudio {
   id: string;
   audio_url: string;

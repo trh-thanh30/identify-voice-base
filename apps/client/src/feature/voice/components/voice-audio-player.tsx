@@ -17,6 +17,9 @@ export interface VoiceAudioPlayerProps {
   onReady?: () => void;
   footerAction?: ReactNode;
   footerActionWrapperClassName?: string;
+  inlineFooterAction?: boolean;
+  isLoading?: boolean;
+  loadingText?: string;
   compact?: boolean;
 }
 
@@ -30,6 +33,9 @@ export function VoiceAudioPlayer({
   onReady,
   footerAction,
   footerActionWrapperClassName,
+  inlineFooterAction = false,
+  isLoading = false,
+  loadingText,
   compact = false,
 }: VoiceAudioPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -55,6 +61,10 @@ export function VoiceAudioPlayer({
   const resolvedFileName = file?.name ?? fileName ?? "audio";
   const visibleAudioError = file || audioUrl ? audioError : null;
   const visibleIsLoadingAudio = !file && !!audioUrl && isLoadingAudio;
+  const visibleIsPreparingWaveform =
+    Boolean(resolvedAudioUrl) && !visibleAudioError && !isReady;
+  const visibleIsLoading =
+    isLoading || visibleIsLoadingAudio || visibleIsPreparingWaveform;
 
   useEffect(() => {
     return () => {
@@ -272,24 +282,34 @@ export function VoiceAudioPlayer({
     }
   };
 
-  if (!resolvedAudioUrl && !visibleIsLoadingAudio) return null;
+  if (!resolvedAudioUrl && !visibleIsLoading) return null;
 
   const content = (
     <CardContent className={cn("space-y-4", compact && "px-4 py-4")}>
       <div
         className={cn(
-          "rounded-xl border bg-background p-3",
+          "relative rounded-xl border bg-background p-3",
           compact && "overflow-hidden rounded-2xl py-2",
         )}
       >
         <div
           ref={containerRef}
           className={cn(
-            "w-full",
-            compact && "min-h-16",
+            "min-h-24 w-full",
+            compact && "min-h-24",
             visibleAudioError && "hidden",
           )}
         />
+
+        {visibleIsLoading ? (
+          <div className="absolute inset-3 flex items-center justify-center rounded-lg bg-background/85 text-sm text-muted-foreground backdrop-blur-[1px]">
+            <Loader className="mr-2 h-4 w-4 animate-spin" />
+            {loadingText ??
+              (visibleIsLoadingAudio
+                ? "Đang tải audio..."
+                : "Đang chuẩn bị phổ thanh...")}
+          </div>
+        ) : null}
 
         {visibleAudioError ? (
           <div className="space-y-3">
@@ -303,14 +323,10 @@ export function VoiceAudioPlayer({
               />
             ) : null}
           </div>
-        ) : visibleIsLoadingAudio ? (
-          <div className="flex min-h-24 items-center justify-center text-sm text-muted-foreground">
-            <Loader className="mr-2 h-4 w-4 animate-spin" /> Đang tải audio...
-          </div>
         ) : null}
       </div>
 
-      {!visibleAudioError && !visibleIsLoadingAudio ? (
+      {!visibleAudioError && !visibleIsLoading ? (
         <div className="flex min-w-0 flex-wrap items-center gap-3">
           <Button
             type="button"
@@ -339,14 +355,22 @@ export function VoiceAudioPlayer({
           <div className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
             {resolvedFileName}
           </div>
+
+          {footerAction && inlineFooterAction ? (
+            <div
+              className={cn("ml-auto shrink-0", footerActionWrapperClassName)}
+            >
+              {footerAction}
+            </div>
+          ) : null}
         </div>
-      ) : !visibleIsLoadingAudio ? (
+      ) : !visibleIsLoading ? (
         <div className="min-w-0 truncate text-sm text-muted-foreground">
           {resolvedFileName}
         </div>
       ) : null}
 
-      {footerAction ? (
+      {footerAction && !inlineFooterAction ? (
         <div className={cn("flex justify-end", footerActionWrapperClassName)}>
           {footerAction}
         </div>

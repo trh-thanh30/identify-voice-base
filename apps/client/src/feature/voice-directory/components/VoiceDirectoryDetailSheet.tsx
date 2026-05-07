@@ -1,6 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Play, Plus, Trash2, Users, X } from "lucide-react";
+import {
+  ArrowRight,
+  Loader2,
+  Play,
+  Plus,
+  Sparkles,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -33,9 +42,10 @@ import {
 import { QUERY_KEYS } from "@/constants";
 import type { ApiError } from "@/types";
 
+import { voiceApi } from "@/feature/voice/api/voice.api";
 import { VoiceAudioPlayer } from "@/feature/voice/components/voice-audio-player";
+import { useNormalizeAudio } from "@/feature/voice/hooks/use-normalize-audio";
 import { voiceDirectoryApi } from "../api/voice-directory.api";
-import { VoiceDuplicateMatchesDialog } from "./VoiceDuplicateMatchesDialog";
 import {
   type UpdateVoiceDirectoryFormValues,
   updateVoiceDirectoryFormSchema,
@@ -44,6 +54,7 @@ import type {
   UpdateVoiceInfoResponse,
   VoiceDirectoryDetail,
 } from "../types/voice-directory.types";
+import { VoiceDuplicateMatchesDialog } from "./VoiceDuplicateMatchesDialog";
 
 function normalizeCriminalForForm(
   value: VoiceDirectoryDetail["criminal_record"],
@@ -96,7 +107,12 @@ export function VoiceDirectoryDetailSheet({
   onUpdated,
 }: VoiceDirectoryDetailSheetProps) {
   const queryClient = useQueryClient();
+  const { fetchProtectedAudioBlob } = useNormalizeAudio();
   const [confirmDeactivateOpen, setConfirmDeactivateOpen] = useState(false);
+  const [confirmDenoiseOpen, setConfirmDenoiseOpen] = useState(false);
+  const [denoisePreviewOpen, setDenoisePreviewOpen] = useState(false);
+  const [filteredEnrollAudioFile, setFilteredEnrollAudioFile] =
+    useState<File | null>(null);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [previewSessionId, setPreviewSessionId] = useState<string | null>(null);
   const [selectedAudioIds, setSelectedAudioIds] = useState<Set<string>>(
@@ -242,6 +258,65 @@ export function VoiceDirectoryDetailSheet({
     },
   });
 
+  const denoiseEnrollAudioMutation = useMutation({
+    mutationFn: () => {
+      if (!voiceId) throw new Error("Thiếu ID hồ sơ.");
+      if (!filteredEnrollAudioFile) {
+        throw new Error("Chưa có audio lọc ồn để cập nhật.");
+      }
+      return voiceDirectoryApi.denoiseEnrollAudio(
+        voiceId,
+        filteredEnrollAudioFile,
+      );
+    },
+    onSuccess: () => {
+      toast.success("Đã lọc ồn và cập nhật audio đăng ký.");
+      setConfirmDenoiseOpen(false);
+      setDenoisePreviewOpen(false);
+      setFilteredEnrollAudioFile(null);
+      void queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.voice.directory.detail(voiceId!),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["voice", "directory"],
+      });
+    },
+    onError: (err: unknown) => {
+      const msg =
+        err && typeof err === "object" && "message" in err
+          ? String((err as ApiError).message)
+          : "Không thể lọc ồn audio đăng ký.";
+      toast.error(msg);
+    },
+  });
+
+  const denoisePreviewMutation = useMutation({
+    mutationFn: async () => {
+      if (!enrollAudioUrl) throw new Error("Không có audio đăng ký.");
+
+      const sourceBlob = await fetchProtectedAudioBlob(enrollAudioUrl);
+      const sourceFile = new File(
+        [sourceBlob],
+        `${detail?.name || "voice-sample"}.wav`,
+        {
+          type: sourceBlob.type || "audio/wav",
+        },
+      );
+
+      return voiceApi.filterNoise(sourceFile);
+    },
+    onSuccess: (file) => {
+      setFilteredEnrollAudioFile(file);
+    },
+    onError: (err: unknown) => {
+      const msg =
+        err && typeof err === "object" && "message" in err
+          ? String((err as ApiError).message)
+          : "Không thể tạo audio lọc ồn.";
+      toast.error(msg);
+    },
+  });
+
   const toggleAudioSelection = (audioFileId: string) => {
     setSelectedAudioIds((prev) => {
       const next = new Set(prev);
@@ -263,9 +338,18 @@ export function VoiceDirectoryDetailSheet({
   const handleSheetOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setDuplicateDialogOpen(false);
+      setDenoisePreviewOpen(false);
+      setConfirmDenoiseOpen(false);
+      setFilteredEnrollAudioFile(null);
     }
 
     onOpenChange(nextOpen);
+  };
+
+  const openDenoisePreview = () => {
+    setDenoisePreviewOpen(true);
+    setFilteredEnrollAudioFile(null);
+    denoisePreviewMutation.mutate();
   };
 
   return (
@@ -315,7 +399,26 @@ export function VoiceDirectoryDetailSheet({
                     </p>
                   )}
                 </section>
-                <div className="flex justify-end py-1">
+                <div className="flex flex-col gap-2 py-1 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    disabled={
+                      !hasEnrollStreamUrl ||
+                      denoiseEnrollAudioMutation.isPending ||
+                      denoisePreviewMutation.isPending
+                    }
+                    onClick={openDenoisePreview}
+                  >
+                    {denoiseEnrollAudioMutation.isPending ||
+                    denoisePreviewMutation.isPending ? (
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="mr-2 size-4" />
+                    )}
+                    Lọc ồn audio đăng ký
+                  </Button>
                   <Button
                     type="button"
                     className="w-full sm:w-auto"
@@ -711,6 +814,163 @@ export function VoiceDirectoryDetailSheet({
               ) : (
                 "Xác nhận"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={denoisePreviewOpen}
+        onOpenChange={(nextOpen) => {
+          setDenoisePreviewOpen(nextOpen);
+          if (!nextOpen) {
+            setFilteredEnrollAudioFile(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-6xl">
+          <DialogHeader>
+            <DialogTitle>So sánh audio đăng ký</DialogTitle>
+            <DialogDescription>
+              Nghe lại audio nguồn và audio đã lọc ồn trước khi quyết định cập
+              nhật mẫu giọng đăng ký.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="relative grid gap-6 lg:grid-cols-2 lg:gap-12">
+            <div className="pointer-events-none absolute inset-y-0 left-1/2 z-10 hidden -translate-x-1/2 items-center justify-center lg:flex">
+              <ArrowRight className="size-8 text-muted-foreground/80" />
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-4 rounded-2xl border p-4">
+                <p className="font-medium">Audio nguồn</p>
+                <VoiceAudioPlayer
+                  file={null}
+                  audioUrl={enrollAudioUrl}
+                  fileName={`${detail?.name || "voice-sample"}.wav`}
+                  title="Audio nguồn"
+                  compact
+                />
+              </div>
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={denoiseEnrollAudioMutation.isPending}
+                  onClick={() => {
+                    setFilteredEnrollAudioFile(null);
+                    setDenoisePreviewOpen(false);
+                  }}
+                >
+                  Dùng audio nguồn
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-4 rounded-2xl border p-4">
+                <p className="font-medium">Audio đã lọc ồn</p>
+                {denoisePreviewMutation.isPending ? (
+                  <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed text-sm text-muted-foreground">
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Đang lọc audio đăng ký...
+                  </div>
+                ) : filteredEnrollAudioFile ? (
+                  <VoiceAudioPlayer
+                    file={filteredEnrollAudioFile}
+                    title="Audio đã lọc ồn"
+                    compact
+                  />
+                ) : (
+                  <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed px-4 text-center text-sm text-muted-foreground">
+                    Không thể tạo audio đã lọc. Đóng dialog và thử lại.
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  disabled={
+                    !filteredEnrollAudioFile ||
+                    denoisePreviewMutation.isPending ||
+                    denoiseEnrollAudioMutation.isPending
+                  }
+                  onClick={() => setConfirmDenoiseOpen(true)}
+                >
+                  Dùng audio đã lọc
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmDenoiseOpen} onOpenChange={setConfirmDenoiseOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Lọc ồn audio đăng ký?</DialogTitle>
+            <DialogDescription className="space-y-3 text-sm leading-relaxed">
+              <p>
+                Lọc ồn có thể loại bỏ một phần âm thanh thô và đặc trưng giọng
+                tự nhiên của người nói. Trong một số trường hợp, việc này có thể
+                làm kết quả định danh giảm đáng kể.
+              </p>
+
+              <p className="font-semibold">
+                Chỉ tiếp tục nếu mẫu hiện tại bị nhiễu nhiều và bạn chấp nhận
+                rủi ro này.
+              </p>
+
+              <div className="border rounded-md p-3 bg-muted/20">
+                <p className="font-semibold mb-1">Lưu ý quan trọng:</p>
+                <p>
+                  Hiện tại hệ thống AI Core{" "}
+                  <span className="font-semibold">
+                    chưa hỗ trợ API cập nhật lại voice embedding
+                  </span>{" "}
+                  khi bạn thay đổi mẫu giọng nói.
+                </p>
+                <p className="mt-2">
+                  Điều này có nghĩa là nếu bạn cập nhật voice bằng file audio đã
+                  lọc ồn, dữ liệu giọng nói trong database backend sẽ được cập
+                  nhật, nhưng{" "}
+                  <span className="font-semibold">
+                    vector embedding đang lưu trong AI Core sẽ không thay đổi
+                  </span>
+                  .
+                </p>
+                <p className="mt-2">
+                  Sự không đồng bộ này có thể dẫn đến sai lệch trong quá trình
+                  định danh sau này.
+                </p>
+              </div>
+
+              <p className="font-semibold text-destructive">
+                Vui lòng chỉ tiếp tục khi bạn thực sự chắc chắn muốn sử dụng mẫu
+                giọng đã lọc ồn và chấp nhận rủi ro trên.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={denoiseEnrollAudioMutation.isPending}
+              onClick={() => setConfirmDenoiseOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={denoiseEnrollAudioMutation.isPending}
+              onClick={() => denoiseEnrollAudioMutation.mutate()}
+            >
+              {denoiseEnrollAudioMutation.isPending ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : null}
+              Xác nhận lọc ồn
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -8,6 +8,7 @@ import { SearchUtil } from '@/common/helpers/search.util';
 import { VoicesRepository } from './repository/voices.repository';
 import { VoicesService } from './service/voices.service';
 import { DeleteVoiceUseCase } from './use-cases/delete-voice.usecase';
+import { DenoiseEnrollAudioUseCase } from './use-cases/denoise-enroll-audio.usecase';
 import { FindAllVoicesUseCase } from './use-cases/find-all-voices.usecase';
 import { GetVoiceDetailUseCase } from './use-cases/get-voice-detail.usecase';
 import { UpdateVoiceInfoUseCase } from './use-cases/update-voice-info.usecase';
@@ -40,6 +41,7 @@ import { VoicesController } from './voices.controller';
     GetVoiceDetailUseCase,
     UpdateVoiceInfoUseCase,
     UpdateVoiceEmbeddingUseCase,
+    DenoiseEnrollAudioUseCase,
     DeleteVoiceUseCase,
     AuthTokenService,
   ],

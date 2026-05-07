@@ -13,12 +13,16 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 import { User } from '@/common/decorators/user.decorator';
 import {
   ApiBearerAuth,
+  ApiConsumes,
   ApiOperation,
   ApiParam,
   ApiResponse,
@@ -97,5 +101,27 @@ export class VoicesController {
       throw new BadRequestException('Bắt buộc phải có ít nhất 1 audio ID');
     }
     return this.voicesService.updateEmbedding(userId, dto.audioIds, user.id);
+  }
+
+  @Post(':id/denoise-enroll-audio')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Lọc ồn và cập nhật lại audio đăng ký đang active',
+  })
+  @ApiParam({ name: 'id', description: 'UUID của user' })
+  @ApiSuccess('Lọc ồn và cập nhật audio đăng ký thành công!')
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('audio'))
+  @Permissions([VOICES.UPDATE])
+  async denoiseEnrollAudio(
+    @Param('id') userId: string,
+    @User() user: auth_accounts,
+    @UploadedFile() filteredAudio?: Express.Multer.File,
+  ) {
+    return this.voicesService.denoiseEnrollAudio(
+      userId,
+      user.id,
+      filteredAudio,
+    );
   }
 }

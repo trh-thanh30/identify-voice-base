@@ -3,7 +3,7 @@ import { getValidAccessToken } from "@/lib/auth-refresh";
 
 export function useNormalizeAudio() {
   const WAVEFORM_FALLBACK_MESSAGE =
-    "Khong the tai waveform cho file audio nay. Ban van co the phat bang trinh phat mac dinh ben duoi.";
+    "Không thể tải waveform cho file audio này. Bạn vẫn có thể phát bằng trình phát mặc định bên dưới.";
 
   function normalizeAudioUrl(audioUrl: string): string {
     const trimmed = audioUrl.trim().replace("/api/v1/api/v1/", "/api/v1/");
@@ -56,14 +56,14 @@ export function useNormalizeAudio() {
       });
 
       if (!nextToken) {
-        throw new Error("Khong the lam moi phien dang nhap.");
+        throw new Error("Không thể làm mới phiên đăng nhập.");
       }
 
       response = await fetchAudioWithToken(normalizedUrl, nextToken);
     }
 
     if (!response.ok) {
-      throw new Error(`Khong tai duoc audio (${response.status}).`);
+      throw new Error(`Không tải được audio (${response.status}).`);
     }
 
     return response.blob();

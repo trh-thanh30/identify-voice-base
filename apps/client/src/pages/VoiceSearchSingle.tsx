@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { LoaderCircle, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -15,19 +15,31 @@ import {
 import { VoiceAudioPlayer } from "@/feature/voice/components/voice-audio-player";
 import { VoiceEnrollDialog } from "@/feature/voice/components/voice-enroll-dialog";
 import { VoiceErrorDialog } from "@/feature/voice/components/voice-error-dialog";
-import { VoiceSingleSearchForm } from "@/feature/voice/components/voice-single-search-form";
+import { VoiceFilterNoiseDialog } from "@/feature/voice/components/voice-filter-noise-dialog";
+import {
+  VoiceSingleSearchForm,
+  type VoiceSingleSearchFormHandle,
+} from "@/feature/voice/components/voice-single-search-form";
 import { VoiceTop5MatchTable } from "@/feature/voice/components/voice-top5-match-table";
 import { useVoiceStore } from "@/feature/voice";
-import { voiceDirectoryApi } from "@/feature/voice-directory/api/voice-directory.api";
-import { useScrollOffset } from "@/hooks/use-scroll-offset";
 import type {
   VoiceIdentifyItem,
   VoiceIdentifyTwoItem,
 } from "@/feature/voice/types/voice.types";
+import { voiceDirectoryApi } from "@/feature/voice-directory/api/voice-directory.api";
+import { useScrollOffset } from "@/hooks/use-scroll-offset";
 import type { ApiError } from "@/types";
 
 const SINGLE_SEARCH_FORM_ID = "voice-single-search-form";
 const RESULT_SCROLL_OFFSET_Y = 96;
+
+function getDeleteVoiceId(item: VoiceIdentifyItem | null) {
+  return item?.matched_voice_id || item?.voice_id || "";
+}
+
+function getDeleteKey(item: VoiceIdentifyItem | null) {
+  return item?.user_id || getDeleteVoiceId(item);
+}
 
 export default function VoiceSearchSingle() {
   const {
@@ -38,7 +50,11 @@ export default function VoiceSearchSingle() {
     setIdentifyResult,
   } = useVoiceStore();
 
+  const searchFormRef = useRef<VoiceSingleSearchFormHandle | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [normalizedAudioFile, setNormalizedAudioFile] = useState<File | null>(
+    null,
+  );
   const [openEnrollDialog, setOpenEnrollDialog] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedRegisterItem, setSelectedRegisterItem] =
@@ -64,17 +80,33 @@ export default function VoiceSearchSingle() {
   const items = identifyResult?.items ?? [];
   const hasAudioFile = Boolean(audioFile);
   const hasSearchResult = identifyResult !== null;
+  const refreshIdentify = () => {
+    searchFormRef.current?.submitCurrent();
+  };
 
   const deleteVoiceMutation = useMutation({
     mutationFn: async (target: VoiceIdentifyItem) => {
-      if (!target.user_id) {
-        throw new Error("Thiếu user_id để xóa hồ sơ.");
+      if (target.user_id) {
+        await voiceDirectoryApi.deleteVoice(target.user_id);
+        return "business";
       }
-      await voiceDirectoryApi.deleteVoice(target.user_id);
+
+      const voiceId = getDeleteVoiceId(target);
+      if (!voiceId) {
+        throw new Error("Thiếu voice_id để xóa trong AI Core.");
+      }
+
+      await voiceDirectoryApi.deleteAiCoreVoice(voiceId);
+      return "ai-core";
     },
-    onSuccess: () => {
-      toast.success("Đã xóa hồ sơ giọng nói.");
+    onSuccess: (source) => {
+      toast.success(
+        source === "ai-core"
+          ? "Đã xóa voice khỏi cơ sở dữ liệu AI Core."
+          : "Đã xóa hồ sơ giọng nói.",
+      );
       setDeleteTarget(null);
+      refreshIdentify();
     },
     onError: (err: unknown) => {
       const msg =
@@ -122,6 +154,16 @@ export default function VoiceSearchSingle() {
     });
   };
 
+  const handleSelectPreviewAudio = (file: File) => {
+    setAudioFile(file);
+    setSelectedRegisterItem(null);
+    setSelectedRegisterIndex(null);
+    setDeleteTarget(null);
+    resetIdentifyResult();
+    searchFormRef.current?.replaceAudioFile(file);
+    searchFormRef.current?.submitCurrent();
+  };
+
   return (
     <>
       <PageLayout
@@ -130,12 +172,14 @@ export default function VoiceSearchSingle() {
         titleClassName="font-playfair text-[34px] leading-[1.1] font-bold tracking-tight text-[#4b1d18] md:text-[42px]"
       >
         <VoiceSingleSearchForm
+          ref={searchFormRef}
           formId={SINGLE_SEARCH_FORM_ID}
           autoSubmitOnAudioChange
           showSubmitButton={false}
           onPendingChange={setIsSearching}
           onFileSelected={(file) => {
             setAudioFile(file);
+            setNormalizedAudioFile(file);
             setSelectedRegisterItem(null);
             setSelectedRegisterIndex(null);
             setDeleteTarget(null);
@@ -147,25 +191,31 @@ export default function VoiceSearchSingle() {
           file={audioFile}
           title="Audio tra cứu"
           footerAction={
-            <Button
-              type="submit"
-              form={SINGLE_SEARCH_FORM_ID}
-              variant="outline"
-              className="shadow-md hover:shadow-lg"
-              disabled={isSearching}
-            >
-              {isSearching ? (
-                <>
-                  <LoaderCircle className="mr-2 size-4 animate-spin" />
-                  Đang tra cứu...
-                </>
-              ) : (
-                <>
-                  <Search className="mr-2 size-4" />
-                  Tra cứu 1 người
-                </>
-              )}
-            </Button>
+            <div className="flex flex-wrap justify-end gap-3">
+              <VoiceFilterNoiseDialog
+                sourceFile={normalizedAudioFile}
+                onSelectAudio={handleSelectPreviewAudio}
+              />
+              <Button
+                type="submit"
+                form={SINGLE_SEARCH_FORM_ID}
+                variant="outline"
+                className="shadow-md hover:shadow-lg"
+                disabled={isSearching}
+              >
+                {isSearching ? (
+                  <>
+                    <LoaderCircle className="mr-2 size-4 animate-spin" />
+                    Đang tra cứu...
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 size-4" />
+                    Tra cứu 1 người
+                  </>
+                )}
+              </Button>
+            </div>
           }
         />
 
@@ -179,9 +229,10 @@ export default function VoiceSearchSingle() {
               fallbackAudioFile={audioFile}
               onRegisterItem={openRegisterDialog}
               onDeleteItem={setDeleteTarget}
+              onResultsChange={refreshIdentify}
               deletingUserId={
                 deleteVoiceMutation.isPending
-                  ? (deleteTarget?.user_id ?? null)
+                  ? getDeleteKey(deleteTarget)
                   : null
               }
             />
@@ -233,11 +284,19 @@ export default function VoiceSearchSingle() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Xóa hồ sơ giọng nói?</DialogTitle>
+            <DialogTitle>
+              {deleteTarget?.user_id
+                ? "Xóa hồ sơ giọng nói?"
+                : "Xóa voice trong AI Core?"}
+            </DialogTitle>
             <DialogDescription>
-              {deleteTarget?.name
-                ? `Bạn sắp xóa hồ sơ của ${deleteTarget.name}. Thao tác này sẽ gọi API xóa trên backend và gỡ hồ sơ khỏi nhận dạng mới.`
-                : "Bạn sắp xóa hồ sơ giọng nói này. Thao tác này sẽ gọi API xóa trên backend và gỡ hồ sơ khỏi nhận dạng mới."}
+              {deleteTarget?.user_id
+                ? deleteTarget.name
+                  ? `Bạn sắp xóa hồ sơ của ${deleteTarget.name}. Thao tác này sẽ gọi API xóa trên backend và gỡ hồ sơ khỏi nhận dạng mới.`
+                  : "Bạn sắp xóa hồ sơ giọng nói này. Thao tác này sẽ gọi API xóa trên backend và gỡ hồ sơ khỏi nhận dạng mới."
+                : deleteTarget?.name
+                  ? `Bạn sắp xóa voice ${deleteTarget.name} trong cơ sở dữ liệu của AI Core. Voice này chưa có hồ sơ trong database nghiệp vụ.`
+                  : "Bạn sắp xóa voice này trong cơ sở dữ liệu của AI Core. Voice này chưa có hồ sơ trong database nghiệp vụ."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">

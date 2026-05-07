@@ -17,6 +17,7 @@ export interface VoiceAudioPlayerProps {
   onReady?: () => void;
   footerAction?: ReactNode;
   footerActionWrapperClassName?: string;
+  inlineFooterAction?: boolean;
   compact?: boolean;
 }
 
@@ -30,6 +31,7 @@ export function VoiceAudioPlayer({
   onReady,
   footerAction,
   footerActionWrapperClassName,
+  inlineFooterAction = false,
   compact = false,
 }: VoiceAudioPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -339,6 +341,14 @@ export function VoiceAudioPlayer({
           <div className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
             {resolvedFileName}
           </div>
+
+          {footerAction && inlineFooterAction ? (
+            <div
+              className={cn("ml-auto shrink-0", footerActionWrapperClassName)}
+            >
+              {footerAction}
+            </div>
+          ) : null}
         </div>
       ) : !visibleIsLoadingAudio ? (
         <div className="min-w-0 truncate text-sm text-muted-foreground">
@@ -346,7 +356,7 @@ export function VoiceAudioPlayer({
         </div>
       ) : null}
 
-      {footerAction ? (
+      {footerAction && !inlineFooterAction ? (
         <div className={cn("flex justify-end", footerActionWrapperClassName)}>
           {footerAction}
         </div>

@@ -100,6 +100,10 @@ function getSelectedFileType(file?: SelectedTranslateFile | null) {
   return extension || file?.kind || "text";
 }
 
+function getSourceLanguageOptionsByKind(kind?: SelectedTranslateFile["kind"]) {
+  return kind === "audio" ? SPEECH_LANGUAGES : OCR_LANGUAGES;
+}
+
 export default function TranslateFile() {
   const translateFormRef = useRef<HTMLDivElement | null>(null);
   const translateProgressRef = useRef(0);
@@ -143,9 +147,15 @@ export default function TranslateFile() {
     setTranslateProgress(progress);
   }, []);
 
-  const sourceLanguageOptions = useMemo(() => {
-    return isAudio ? SPEECH_LANGUAGES : OCR_LANGUAGES;
-  }, [isAudio]);
+  const sourceLanguageOptions = useMemo(
+    () => getSourceLanguageOptionsByKind(selectedFile?.kind),
+    [selectedFile?.kind],
+  );
+  const sourceLanguageLabel = isAudio
+    ? "Ng\u00f4n ng\u1eef audio"
+    : hasFile
+      ? "Ng\u00f4n ng\u1eef OCR"
+      : "Ng\u00f4n ng\u1eef ngu\u1ed3n";
 
   const detectSourceLanguage = async (text: string) => {
     const normalizedText = text.trim();
@@ -451,7 +461,14 @@ export default function TranslateFile() {
   };
 
   const handleSelectedFileChange = (nextFile: SelectedTranslateFile | null) => {
-    const nextSourceLanguage = AUTO_LANGUAGE;
+    const nextSourceLanguageOptions = getSourceLanguageOptionsByKind(
+      nextFile?.kind,
+    );
+    const nextSourceLanguage = nextSourceLanguageOptions.some(
+      (language) => language.value === sourceLanguage,
+    )
+      ? sourceLanguage
+      : AUTO_LANGUAGE;
 
     autoExtractedAudioFileRef.current = null;
     setSelectedFile(nextFile);
@@ -563,7 +580,168 @@ export default function TranslateFile() {
       titleClassName="font-playfair text-[34px] leading-[1.1] font-bold tracking-tight text-[#4b1d18] md:text-[42px]"
       onRefresh={resetPage}
     >
-      <Card className="rounded-md">
+      <Card className="rounded-md border border-slate-200 py-5 shadow-none ring-0">
+        <CardContent
+          className={`flex flex-col gap-4 ${
+            isAudio
+              ? "xl:flex-row xl:items-end xl:justify-between"
+              : "lg:flex-row lg:items-end lg:justify-between"
+          }`}
+        >
+          <div
+            className={`grid flex-1 gap-3 sm:grid-cols-2 ${
+              isAudio ? "xl:max-w-4xl xl:grid-cols-4" : "lg:max-w-2xl"
+            }`}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="translate-source-language">
+                {sourceLanguageLabel}
+              </Label>
+              <Select
+                value={sourceLanguage}
+                onValueChange={handleSourceLanguageChange}
+                disabled={isBusy}
+              >
+                <SelectTrigger
+                  id="translate-source-language"
+                  className="w-full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sourceLanguageOptions.map((language) => (
+                    <SelectItem key={language.value} value={language.value}>
+                      {language.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {isAudio ? (
+              <div className="space-y-2">
+                <Label htmlFor="translate-return-timestamp">Timestamp</Label>
+                <Select
+                  value={String(returnTimestamp)}
+                  onValueChange={handleReturnTimestampChange}
+                  disabled={isBusy}
+                >
+                  <SelectTrigger
+                    id="translate-return-timestamp"
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="false">
+                      {"Kh\u00f4ng tr\u1ea3 timestamp"}
+                    </SelectItem>
+                    <SelectItem value="true">{"Tr\u1ea3 timestamp"}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {
+                    "Timestamp ch\u1ec9 tr\u1ea3 v\u1ec1 khi S2T ng\u00f4n ng\u1eef n\u01b0\u1edbc ngo\u00e0i, hi\u1ec7n ch\u01b0a h\u1ed7 tr\u1ee3 ti\u1ebfng Vi\u1ec7t."
+                  }
+                </p>
+              </div>
+            ) : null}
+
+            {isAudio ? (
+              <div className="space-y-2">
+                <Label htmlFor="translate-denoise-audio">
+                  {"Kh\u1eed nhi\u1ec5u"}
+                </Label>
+                <Select
+                  value={String(denoiseAudio)}
+                  onValueChange={handleDenoiseAudioChange}
+                  disabled={isBusy}
+                >
+                  <SelectTrigger
+                    id="translate-denoise-audio"
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="false">
+                      {"Kh\u00f4ng kh\u1eed nhi\u1ec5u"}
+                    </SelectItem>
+                    <SelectItem value="true">
+                      {"Kh\u1eed nhi\u1ec5u"}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              <Label htmlFor="translate-target-language">
+                {"D\u1ecbch sang"}
+              </Label>
+              <Select
+                value={targetLanguage}
+                onValueChange={setTargetLanguage}
+                disabled={isBusy}
+              >
+                <SelectTrigger
+                  id="translate-target-language"
+                  className="w-full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRANSLATION_LANGUAGES.map((language) => (
+                    <SelectItem key={language.value} value={language.value}>
+                      {language.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div
+            className={`flex shrink-0 flex-wrap items-center gap-3 ${
+              isAudio ? "xl:justify-end" : "lg:justify-end"
+            }`}
+          >
+            <Tabs value={mode} onValueChange={handleModeChange}>
+              <TabsList>
+                <TabsTrigger value="translate" disabled={isBusy}>
+                  <Languages className="size-4" />
+                  {"D\u1ecbch"}
+                </TabsTrigger>
+                <TabsTrigger value="summarize" disabled={isBusy}>
+                  <Sparkles className="size-4" />
+                  {"T\u00f3m t\u1eaft"}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {!isAudio ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="shadow-lg shadow-slate-200/80 transition-shadow hover:shadow-xl hover:shadow-slate-300/80"
+                disabled={!selectedFile || isBusy}
+                onClick={() => void extractText()}
+              >
+                {processingStep === "extracting" ? (
+                  <LoaderCircle className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <FileText className="mr-2 size-4" />
+                )}
+                {processingStep === "extracting"
+                  ? "\u0110ang tr\u00edch xu\u1ea5t..."
+                  : "Tr\u00edch xu\u1ea5t v\u0103n b\u1ea3n"}
+              </Button>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-md border border-slate-200 shadow-none ring-0">
         <CardHeader>
           <CardTitle>Dịch từ tệp</CardTitle>
         </CardHeader>
@@ -587,144 +765,6 @@ export default function TranslateFile() {
         />
       ) : null}
 
-      {hasFile ? (
-        <Card className="rounded-md">
-          <CardContent className="flex flex-col gap-4 py-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="space-y-2">
-                <Label htmlFor="translate-source-language">
-                  {isAudio ? "Ngôn ngữ audio" : "Ngôn ngữ OCR"}
-                </Label>
-                <Select
-                  value={sourceLanguage}
-                  onValueChange={handleSourceLanguageChange}
-                  disabled={isBusy}
-                >
-                  <SelectTrigger
-                    id="translate-source-language"
-                    className="w-full"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sourceLanguageOptions.map((language) => (
-                      <SelectItem key={language.value} value={language.value}>
-                        {language.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {isAudio ? (
-                <div className="space-y-2">
-                  <Label htmlFor="translate-return-timestamp">Timestamp</Label>
-                  <Select
-                    value={String(returnTimestamp)}
-                    onValueChange={handleReturnTimestampChange}
-                    disabled={isBusy}
-                  >
-                    <SelectTrigger
-                      id="translate-return-timestamp"
-                      className="w-full"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="false">Không trả timestamp</SelectItem>
-                      <SelectItem value="true">Trả timestamp</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Timestamp chỉ trả về khi S2T ngôn ngữ nước ngoài, hiện chưa
-                    hỗ trợ tiếng Việt.
-                  </p>
-                </div>
-              ) : null}
-
-              {isAudio ? (
-                <div className="space-y-2">
-                  <Label htmlFor="translate-denoise-audio">Khử nhiễu</Label>
-                  <Select
-                    value={String(denoiseAudio)}
-                    onValueChange={handleDenoiseAudioChange}
-                    disabled={isBusy}
-                  >
-                    <SelectTrigger
-                      id="translate-denoise-audio"
-                      className="w-full"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="false">Không khử nhiễu</SelectItem>
-                      <SelectItem value="true">Khử nhiễu</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
-
-              <div className="space-y-2">
-                <Label htmlFor="translate-target-language">Dịch sang</Label>
-                <Select
-                  value={targetLanguage}
-                  onValueChange={setTargetLanguage}
-                  disabled={isBusy}
-                >
-                  <SelectTrigger
-                    id="translate-target-language"
-                    className="w-full"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TRANSLATION_LANGUAGES.map((language) => (
-                      <SelectItem key={language.value} value={language.value}>
-                        {language.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              <Tabs value={mode} onValueChange={handleModeChange}>
-                <TabsList>
-                  <TabsTrigger value="translate" disabled={isBusy}>
-                    <Languages className="size-4" />
-                    Dịch
-                  </TabsTrigger>
-                  <TabsTrigger value="summarize" disabled={isBusy}>
-                    <Sparkles className="size-4" />
-                    Tóm tắt
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-
-              {!isAudio ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="shadow-lg shadow-slate-200/80 transition-shadow hover:shadow-xl hover:shadow-slate-300/80"
-                  disabled={!selectedFile || isBusy}
-                  onClick={() => void extractText()}
-                >
-                  {processingStep === "extracting" ? (
-                    <LoaderCircle className="mr-2 size-4 animate-spin" />
-                  ) : (
-                    <FileText className="mr-2 size-4" />
-                  )}
-                  {processingStep === "extracting"
-                    ? "Đang trích xuất..."
-                    : "Trích xuất văn bản"}
-                </Button>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
       {errorMessage ? (
         <Alert variant="destructive">
           <AlertTitle>Không thể xử lý yêu cầu</AlertTitle>
@@ -734,7 +774,7 @@ export default function TranslateFile() {
 
       {hasFile ? (
         <div ref={translateFormRef} className="grid gap-4 lg:grid-cols-2">
-          <Card className="rounded-md">
+          <Card className="rounded-md border border-slate-200 shadow-none ring-0">
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="flex items-center gap-2">
                 Văn bản nguồn
@@ -841,7 +881,7 @@ export default function TranslateFile() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-md">
+          <Card className="rounded-md border border-slate-200 shadow-none ring-0">
             <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle>{outputTitle}</CardTitle>
 

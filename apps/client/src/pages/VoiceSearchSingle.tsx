@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { LoaderCircle, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
@@ -15,15 +15,19 @@ import {
 import { VoiceAudioPlayer } from "@/feature/voice/components/voice-audio-player";
 import { VoiceEnrollDialog } from "@/feature/voice/components/voice-enroll-dialog";
 import { VoiceErrorDialog } from "@/feature/voice/components/voice-error-dialog";
-import { VoiceSingleSearchForm } from "@/feature/voice/components/voice-single-search-form";
+import { VoiceFilterNoiseDialog } from "@/feature/voice/components/voice-filter-noise-dialog";
+import {
+  VoiceSingleSearchForm,
+  type VoiceSingleSearchFormHandle,
+} from "@/feature/voice/components/voice-single-search-form";
 import { VoiceTop5MatchTable } from "@/feature/voice/components/voice-top5-match-table";
 import { useVoiceStore } from "@/feature/voice";
-import { voiceDirectoryApi } from "@/feature/voice-directory/api/voice-directory.api";
-import { useScrollOffset } from "@/hooks/use-scroll-offset";
 import type {
   VoiceIdentifyItem,
   VoiceIdentifyTwoItem,
 } from "@/feature/voice/types/voice.types";
+import { voiceDirectoryApi } from "@/feature/voice-directory/api/voice-directory.api";
+import { useScrollOffset } from "@/hooks/use-scroll-offset";
 import type { ApiError } from "@/types";
 
 const SINGLE_SEARCH_FORM_ID = "voice-single-search-form";
@@ -38,7 +42,11 @@ export default function VoiceSearchSingle() {
     setIdentifyResult,
   } = useVoiceStore();
 
+  const searchFormRef = useRef<VoiceSingleSearchFormHandle | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [normalizedAudioFile, setNormalizedAudioFile] = useState<File | null>(
+    null,
+  );
   const [openEnrollDialog, setOpenEnrollDialog] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedRegisterItem, setSelectedRegisterItem] =
@@ -122,6 +130,17 @@ export default function VoiceSearchSingle() {
     });
   };
 
+  const handleSelectPreviewAudio = (file: File) => {
+    setAudioFile(file);
+    setSelectedRegisterItem(null);
+    setSelectedRegisterIndex(null);
+    setDeleteTarget(null);
+    resetIdentifyResult();
+    searchFormRef.current?.replaceAudioFile(file, {
+      suppressAutoSubmit: true,
+    });
+  };
+
   return (
     <>
       <PageLayout
@@ -130,12 +149,14 @@ export default function VoiceSearchSingle() {
         titleClassName="font-playfair text-[34px] leading-[1.1] font-bold tracking-tight text-[#4b1d18] md:text-[42px]"
       >
         <VoiceSingleSearchForm
+          ref={searchFormRef}
           formId={SINGLE_SEARCH_FORM_ID}
           autoSubmitOnAudioChange
           showSubmitButton={false}
           onPendingChange={setIsSearching}
           onFileSelected={(file) => {
             setAudioFile(file);
+            setNormalizedAudioFile(file);
             setSelectedRegisterItem(null);
             setSelectedRegisterIndex(null);
             setDeleteTarget(null);
@@ -147,25 +168,31 @@ export default function VoiceSearchSingle() {
           file={audioFile}
           title="Audio tra cứu"
           footerAction={
-            <Button
-              type="submit"
-              form={SINGLE_SEARCH_FORM_ID}
-              variant="outline"
-              className="shadow-md hover:shadow-lg"
-              disabled={isSearching}
-            >
-              {isSearching ? (
-                <>
-                  <LoaderCircle className="mr-2 size-4 animate-spin" />
-                  Đang tra cứu...
-                </>
-              ) : (
-                <>
-                  <Search className="mr-2 size-4" />
-                  Tra cứu 1 người
-                </>
-              )}
-            </Button>
+            <div className="flex flex-wrap justify-end gap-3">
+              <VoiceFilterNoiseDialog
+                sourceFile={normalizedAudioFile}
+                onSelectAudio={handleSelectPreviewAudio}
+              />
+              <Button
+                type="submit"
+                form={SINGLE_SEARCH_FORM_ID}
+                variant="outline"
+                className="shadow-md hover:shadow-lg"
+                disabled={isSearching}
+              >
+                {isSearching ? (
+                  <>
+                    <LoaderCircle className="mr-2 size-4 animate-spin" />
+                    Đang tra cứu...
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 size-4" />
+                    Tra cứu 1 người
+                  </>
+                )}
+              </Button>
+            </div>
           }
         />
 

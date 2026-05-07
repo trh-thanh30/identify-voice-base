@@ -30,6 +30,7 @@ import {
 import type { VoiceIdentifyTwoItem } from "../types/voice.types";
 import { VoiceAudioDropzone } from "./voice-audio-dropzone";
 import { VoiceAudioPlayer } from "./voice-audio-player";
+import { VoiceFilterNoiseDialog } from "./voice-filter-noise-dialog";
 
 interface VoiceUploadFormProps {
   initialFile?: File | null;
@@ -122,12 +123,20 @@ export function VoiceUploadForm({
   const uploadMutation = useUploadVoice();
   const { fetchProtectedAudioBlob } = useNormalizeAudio();
   const [isNormalizingAudio, setIsNormalizingAudio] = useState(false);
+  const [normalizedSourceFile, setNormalizedSourceFile] = useState<File | null>(
+    initialFile,
+  );
+
+  useEffect(() => {
+    setNormalizedSourceFile(initialFile);
+  }, [initialFile]);
 
   const normalizeAndSetAudioFile = async (file: File | null) => {
     onFileChange?.();
     onAudioFileReady?.(null);
 
     if (!file) {
+      setNormalizedSourceFile(null);
       form.setValue("audioFile", null, { shouldValidate: true });
       return;
     }
@@ -137,6 +146,7 @@ export function VoiceUploadForm({
 
     try {
       const normalizedFile = await voiceApi.normalizeAudio(file);
+      setNormalizedSourceFile(normalizedFile);
       form.setValue("audioFile", normalizedFile, {
         shouldDirty: true,
         shouldTouch: true,
@@ -145,6 +155,7 @@ export function VoiceUploadForm({
       onAudioFileReady?.(normalizedFile);
       toast.success("Đã chuẩn hóa audio.", { id: toastId });
     } catch {
+      setNormalizedSourceFile(null);
       form.setValue("audioFile", null, { shouldValidate: true });
       onAudioFileReady?.(null);
       toast.error("Không thể chuẩn hóa audio. Vui lòng kiểm tra file gốc.", {
@@ -206,6 +217,16 @@ export function VoiceUploadForm({
     }
   };
 
+  const handleSelectPreviewAudio = (file: File) => {
+    onFileChange?.();
+    form.setValue("audioFile", file, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+    onAudioFileReady?.(file);
+  };
+
   const formContent = (
     <Form {...form}>
       <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
@@ -238,6 +259,15 @@ export function VoiceUploadForm({
             isNormalizingAudio
               ? "Đang chuẩn hóa audio đăng ký..."
               : "Audio đăng ký"
+          }
+          inlineFooterAction
+          footerAction={
+            !previewAudioUrl && normalizedSourceFile ? (
+              <VoiceFilterNoiseDialog
+                sourceFile={normalizedSourceFile}
+                onSelectAudio={handleSelectPreviewAudio}
+              />
+            ) : null
           }
         />
 

@@ -287,7 +287,7 @@ export default function TranslateLive() {
       className="h-[calc(100vh-var(--app-header-height)-3rem)] overflow-y-hidden"
       onRefresh={resetPage}
     >
-      <Card className="shrink-0 gap-0 rounded-md py-5">
+      <Card className="shrink-0 gap-0 rounded-md border border-slate-200 py-5 shadow-none ring-0">
         <CardContent className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:max-w-2xl">
             <div className="space-y-2">
@@ -358,7 +358,7 @@ export default function TranslateLive() {
       </Card>
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
-        <Card className="flex min-h-0 flex-col rounded-md">
+        <Card className="flex min-h-0 flex-col rounded-md border border-slate-200 shadow-none ring-0">
           <CardHeader className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2 ">
               Văn bản nguồn
@@ -428,7 +428,7 @@ export default function TranslateLive() {
           </CardContent>
         </Card>
 
-        <Card className="flex min-h-0 flex-col rounded-md">
+        <Card className="flex min-h-0 flex-col rounded-md border border-slate-200 shadow-none ring-0">
           <CardHeader className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>{outputTitle}</CardTitle>
 

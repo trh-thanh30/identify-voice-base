@@ -4,12 +4,16 @@ import { useVoiceStore } from "@/feature/voice";
 import { VoiceAudioPlayer } from "@/feature/voice/components/voice-audio-player";
 import { VoiceEnrollDialog } from "@/feature/voice/components/voice-enroll-dialog";
 import { VoiceErrorDialog } from "@/feature/voice/components/voice-error-dialog";
-import { VoiceMultiSearchForm } from "@/feature/voice/components/voice-multi-search-form";
+import { VoiceFilterNoiseDialog } from "@/feature/voice/components/voice-filter-noise-dialog";
+import {
+  VoiceMultiSearchForm,
+  type VoiceMultiSearchFormHandle,
+} from "@/feature/voice/components/voice-multi-search-form";
 import { VoiceSpeakerResultCard } from "@/feature/voice/components/voice-speaker-result-card";
 import type { VoiceIdentifyTwoItem } from "@/feature/voice/types/voice.types";
 import { useScrollOffset } from "@/hooks/use-scroll-offset";
 import { LoaderCircle, UsersRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const MULTI_SEARCH_FORM_ID = "voice-multi-search-form";
 const RESULT_SCROLL_OFFSET_Y = 96;
@@ -22,7 +26,11 @@ export default function VoiceSearchMulti() {
     resetIdentifyTwoResult,
   } = useVoiceStore();
 
+  const searchFormRef = useRef<VoiceMultiSearchFormHandle | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [normalizedAudioFile, setNormalizedAudioFile] = useState<File | null>(
+    null,
+  );
   const [openEnrollDialog, setOpenEnrollDialog] = useState(false);
   const [selectedUnknownItem, setSelectedUnknownItem] =
     useState<VoiceIdentifyTwoItem | null>(null);
@@ -53,6 +61,18 @@ export default function VoiceSearchMulti() {
   const items = identifyTwoResult?.items ?? [];
   const hasSearched = identifyTwoResult !== null;
 
+  const handleSelectPreviewAudio = (file: File) => {
+    setAudioFile(file);
+    setSelectedUnknownItem(null);
+    setOpenEnrollDialog(false);
+    setSelectedSpeakerIndex(null);
+    setSelectedSegment({});
+    resetIdentifyTwoResult();
+    searchFormRef.current?.replaceAudioFile(file, {
+      suppressAutoSubmit: true,
+    });
+  };
+
   return (
     <>
       <PageLayout
@@ -61,14 +81,17 @@ export default function VoiceSearchMulti() {
         titleClassName="font-playfair text-[34px] leading-[1.1] font-bold tracking-tight text-[#4b1d18] md:text-[42px]"
       >
         <VoiceMultiSearchForm
+          ref={searchFormRef}
           formId={MULTI_SEARCH_FORM_ID}
           autoSubmitOnAudioChange
           showSubmitButton={false}
           onPendingChange={setIsSearching}
           onFileSelected={(file) => {
             setAudioFile(file);
+            setNormalizedAudioFile(file);
             setSelectedUnknownItem(null);
             setOpenEnrollDialog(false);
+            setSelectedSpeakerIndex(null);
             setSelectedSegment({});
             resetIdentifyTwoResult();
           }}
@@ -80,25 +103,31 @@ export default function VoiceSearchMulti() {
           startAt={selectedSegment.start}
           endAt={selectedSegment.end}
           footerAction={
-            <Button
-              type="submit"
-              form={MULTI_SEARCH_FORM_ID}
-              variant="outline"
-              className="shadow-md hover:shadow-lg"
-              disabled={isSearching}
-            >
-              {isSearching ? (
-                <>
-                  <LoaderCircle className="mr-2 size-4 animate-spin" />
-                  Đang tra cứu...
-                </>
-              ) : (
-                <>
-                  <UsersRound className="mr-2 size-4" />
-                  Tra cứu 1-2 người
-                </>
-              )}
-            </Button>
+            <div className="flex flex-wrap justify-end gap-3">
+              <VoiceFilterNoiseDialog
+                sourceFile={normalizedAudioFile}
+                onSelectAudio={handleSelectPreviewAudio}
+              />
+              <Button
+                type="submit"
+                form={MULTI_SEARCH_FORM_ID}
+                variant="outline"
+                className="shadow-md hover:shadow-lg"
+                disabled={isSearching}
+              >
+                {isSearching ? (
+                  <>
+                    <LoaderCircle className="mr-2 size-4 animate-spin" />
+                    Đang tra cứu...
+                  </>
+                ) : (
+                  <>
+                    <UsersRound className="mr-2 size-4" />
+                    Tra cứu 1-2 người
+                  </>
+                )}
+              </Button>
+            </div>
           }
         />
 

@@ -1,7 +1,3 @@
-import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, AudioLines, LoaderCircle } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,6 +6,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatError } from "@/utils";
+import { useMutation } from "@tanstack/react-query";
+import { ArrowRight, AudioLines, LoaderCircle } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { voiceApi } from "../api/voice.api";
 import { VoiceAudioPlayer } from "./voice-audio-player";
 
@@ -86,7 +86,7 @@ export function VoiceFilterNoiseDialog({
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-6xl">
           <DialogHeader>
             <DialogTitle>Lọc audio</DialogTitle>
           </DialogHeader>
@@ -123,7 +123,7 @@ export function VoiceFilterNoiseDialog({
                 {filterNoiseMutation.isPending ? (
                   <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed text-sm text-muted-foreground">
                     <LoaderCircle className="mr-2 size-4 animate-spin" />
-                    Backend đang lọc audio...
+                    Đang lọc audio...
                   </div>
                 ) : filteredAudioFile ? (
                   <VoiceAudioPlayer

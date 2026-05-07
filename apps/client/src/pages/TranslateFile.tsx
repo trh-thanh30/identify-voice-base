@@ -105,7 +105,7 @@ function getSourceLanguageOptionsByKind(kind?: SelectedTranslateFile["kind"]) {
 }
 
 export default function TranslateFile() {
-  const translateFormRef = useRef<HTMLDivElement | null>(null);
+  const translateOptionsRef = useRef<HTMLDivElement | null>(null);
   const translateProgressRef = useRef(0);
   const translateRequestIdRef = useRef(0);
   const autoExtractedAudioFileRef = useRef<File | null>(null);
@@ -188,7 +188,7 @@ export default function TranslateFile() {
     if (!selectedFile) return;
 
     const frameId = window.requestAnimationFrame(() => {
-      translateFormRef.current?.scrollIntoView({
+      translateOptionsRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
@@ -573,6 +573,156 @@ export default function TranslateFile() {
     }
   };
 
+  const renderTranslateOptions = () => (
+    <Card className="rounded-md border border-slate-200 py-5 shadow-none ring-0">
+      <CardContent
+        className={`flex flex-col gap-4 ${
+          isAudio
+            ? "xl:flex-row xl:items-end xl:justify-between"
+            : "lg:flex-row lg:items-end lg:justify-between"
+        }`}
+      >
+        <div
+          className={`grid flex-1 gap-3 sm:grid-cols-2 ${
+            isAudio ? "xl:max-w-6xl xl:grid-cols-4" : "lg:max-w-2xl"
+          }`}
+        >
+          <div className="space-y-2">
+            <Label htmlFor="translate-source-language">
+              {sourceLanguageLabel}
+            </Label>
+            <Select
+              value={sourceLanguage}
+              onValueChange={handleSourceLanguageChange}
+              disabled={isBusy}
+            >
+              <SelectTrigger id="translate-source-language" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {sourceLanguageOptions.map((language) => (
+                  <SelectItem key={language.value} value={language.value}>
+                    {language.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isAudio ? (
+            <div className="space-y-2">
+              <Label htmlFor="translate-return-timestamp">Timestamp</Label>
+              <Select
+                value={String(returnTimestamp)}
+                onValueChange={handleReturnTimestampChange}
+                disabled={isBusy}
+              >
+                <SelectTrigger
+                  id="translate-return-timestamp"
+                  className="w-full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">{"Không trả timestamp"}</SelectItem>
+                  <SelectItem value="true">{"Trả timestamp"}</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {
+                  "Timestamp chỉ trả về khi S2T ngôn ngữ nước ngoài, hiện chưa hỗ trợ tiếng Việt.."
+                }
+              </p>
+            </div>
+          ) : null}
+
+          {isAudio ? (
+            <div className="space-y-2">
+              <Label htmlFor="translate-denoise-audio">
+                {"Kh\u1eed nhi\u1ec5u"}
+              </Label>
+              <Select
+                value={String(denoiseAudio)}
+                onValueChange={handleDenoiseAudioChange}
+                disabled={isBusy}
+              >
+                <SelectTrigger id="translate-denoise-audio" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">
+                    {"Kh\u00f4ng kh\u1eed nhi\u1ec5u"}
+                  </SelectItem>
+                  <SelectItem value="true">{"Kh\u1eed nhi\u1ec5u"}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="translate-target-language">
+              {"D\u1ecbch sang"}
+            </Label>
+            <Select
+              value={targetLanguage}
+              onValueChange={setTargetLanguage}
+              disabled={isBusy}
+            >
+              <SelectTrigger id="translate-target-language" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TRANSLATION_LANGUAGES.map((language) => (
+                  <SelectItem key={language.value} value={language.value}>
+                    {language.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div
+          className={`flex shrink-0 flex-wrap items-center gap-3 ${
+            isAudio ? "xl:justify-end" : "lg:justify-end"
+          }`}
+        >
+          <Tabs value={mode} onValueChange={handleModeChange}>
+            <TabsList>
+              <TabsTrigger value="translate" disabled={isBusy}>
+                <Languages className="size-4" />
+                {"D\u1ecbch"}
+              </TabsTrigger>
+              <TabsTrigger value="summarize" disabled={isBusy}>
+                <Sparkles className="size-4" />
+                {"T\u00f3m t\u1eaft"}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {!isAudio ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="shadow-lg shadow-slate-200/80 transition-shadow hover:shadow-xl hover:shadow-slate-300/80"
+              disabled={!selectedFile || isBusy}
+              onClick={() => void extractText()}
+            >
+              {processingStep === "extracting" ? (
+                <LoaderCircle className="mr-2 size-4 animate-spin" />
+              ) : (
+                <FileText className="mr-2 size-4" />
+              )}
+              {processingStep === "extracting"
+                ? "\u0110ang tr\u00edch xu\u1ea5t..."
+                : "Tr\u00edch xu\u1ea5t v\u0103n b\u1ea3n"}
+            </Button>
+          ) : null}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <PageLayout
       title="Dịch tệp tin"
@@ -580,166 +730,7 @@ export default function TranslateFile() {
       titleClassName="font-playfair text-[34px] leading-[1.1] font-bold tracking-tight text-[#4b1d18] md:text-[42px]"
       onRefresh={resetPage}
     >
-      <Card className="rounded-md border border-slate-200 py-5 shadow-none ring-0">
-        <CardContent
-          className={`flex flex-col gap-4 ${
-            isAudio
-              ? "xl:flex-row xl:items-end xl:justify-between"
-              : "lg:flex-row lg:items-end lg:justify-between"
-          }`}
-        >
-          <div
-            className={`grid flex-1 gap-3 sm:grid-cols-2 ${
-              isAudio ? "xl:max-w-4xl xl:grid-cols-4" : "lg:max-w-2xl"
-            }`}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="translate-source-language">
-                {sourceLanguageLabel}
-              </Label>
-              <Select
-                value={sourceLanguage}
-                onValueChange={handleSourceLanguageChange}
-                disabled={isBusy}
-              >
-                <SelectTrigger
-                  id="translate-source-language"
-                  className="w-full"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {sourceLanguageOptions.map((language) => (
-                    <SelectItem key={language.value} value={language.value}>
-                      {language.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {isAudio ? (
-              <div className="space-y-2">
-                <Label htmlFor="translate-return-timestamp">Timestamp</Label>
-                <Select
-                  value={String(returnTimestamp)}
-                  onValueChange={handleReturnTimestampChange}
-                  disabled={isBusy}
-                >
-                  <SelectTrigger
-                    id="translate-return-timestamp"
-                    className="w-full"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="false">
-                      {"Kh\u00f4ng tr\u1ea3 timestamp"}
-                    </SelectItem>
-                    <SelectItem value="true">{"Tr\u1ea3 timestamp"}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {
-                    "Timestamp ch\u1ec9 tr\u1ea3 v\u1ec1 khi S2T ng\u00f4n ng\u1eef n\u01b0\u1edbc ngo\u00e0i, hi\u1ec7n ch\u01b0a h\u1ed7 tr\u1ee3 ti\u1ebfng Vi\u1ec7t."
-                  }
-                </p>
-              </div>
-            ) : null}
-
-            {isAudio ? (
-              <div className="space-y-2">
-                <Label htmlFor="translate-denoise-audio">
-                  {"Kh\u1eed nhi\u1ec5u"}
-                </Label>
-                <Select
-                  value={String(denoiseAudio)}
-                  onValueChange={handleDenoiseAudioChange}
-                  disabled={isBusy}
-                >
-                  <SelectTrigger
-                    id="translate-denoise-audio"
-                    className="w-full"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="false">
-                      {"Kh\u00f4ng kh\u1eed nhi\u1ec5u"}
-                    </SelectItem>
-                    <SelectItem value="true">
-                      {"Kh\u1eed nhi\u1ec5u"}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
-
-            <div className="space-y-2">
-              <Label htmlFor="translate-target-language">
-                {"D\u1ecbch sang"}
-              </Label>
-              <Select
-                value={targetLanguage}
-                onValueChange={setTargetLanguage}
-                disabled={isBusy}
-              >
-                <SelectTrigger
-                  id="translate-target-language"
-                  className="w-full"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRANSLATION_LANGUAGES.map((language) => (
-                    <SelectItem key={language.value} value={language.value}>
-                      {language.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div
-            className={`flex shrink-0 flex-wrap items-center gap-3 ${
-              isAudio ? "xl:justify-end" : "lg:justify-end"
-            }`}
-          >
-            <Tabs value={mode} onValueChange={handleModeChange}>
-              <TabsList>
-                <TabsTrigger value="translate" disabled={isBusy}>
-                  <Languages className="size-4" />
-                  {"D\u1ecbch"}
-                </TabsTrigger>
-                <TabsTrigger value="summarize" disabled={isBusy}>
-                  <Sparkles className="size-4" />
-                  {"T\u00f3m t\u1eaft"}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            {!isAudio ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="shadow-lg shadow-slate-200/80 transition-shadow hover:shadow-xl hover:shadow-slate-300/80"
-                disabled={!selectedFile || isBusy}
-                onClick={() => void extractText()}
-              >
-                {processingStep === "extracting" ? (
-                  <LoaderCircle className="mr-2 size-4 animate-spin" />
-                ) : (
-                  <FileText className="mr-2 size-4" />
-                )}
-                {processingStep === "extracting"
-                  ? "\u0110ang tr\u00edch xu\u1ea5t..."
-                  : "Tr\u00edch xu\u1ea5t v\u0103n b\u1ea3n"}
-              </Button>
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
+      {!hasFile ? renderTranslateOptions() : null}
 
       <Card className="rounded-md border border-slate-200 shadow-none ring-0">
         <CardHeader>
@@ -773,197 +764,205 @@ export default function TranslateFile() {
       ) : null}
 
       {hasFile ? (
-        <div ref={translateFormRef} className="grid gap-4 lg:grid-cols-2">
-          <Card className="rounded-md border border-slate-200 shadow-none ring-0">
-            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle className="flex items-center gap-2">
-                Văn bản nguồn
-                <div className="shrink-0 text-right text-sm text-muted-foreground border-l border-l-gray-200 pl-2">
-                  {sourceText.length} ký tự
-                </div>
-              </CardTitle>
+        <>
+          <div ref={translateOptionsRef}>{renderTranslateOptions()}</div>
 
-              <div className="flex flex-wrap gap-2 sm:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!hasSourceText}
-                  onClick={() =>
-                    void copyText(sourceText, "Đã sao chép văn bản nguồn.")
-                  }
-                >
-                  <Copy className="mr-2 size-4" />
-                  Sao chép
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!hasSourceText || isBusy}
-                  onClick={() => {
-                    setSourceText("");
-                    setTranslatedText("");
-                    updateTranslateProgress(0);
-                  }}
-                >
-                  <RotateCcw className="mr-2 size-4" />
-                  Xóa
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2">
-              <div className="relative">
-                <Textarea
-                  value={sourceText}
-                  onChange={(event) => {
-                    setSourceText(event.target.value);
-                    setTranslatedText("");
-                    updateTranslateProgress(0);
-                  }}
-                  disabled={isBusy}
-                  placeholder="Nội dung trích xuất sẽ hiển thị tại đây."
-                  className="h-94 min-h-94 max-h-94 resize-none overflow-y-auto p-4 text-sm leading-6"
-                />
-                {visibleIsLoadingAudio || processingStep === "extracting" ? (
-                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md bg-gray-50 p-6 text-center text-sm text-muted-foreground">
-                    <LoaderCircle className="size-8 animate-spin text-primary-500" />
-                    <span>
-                      {visibleIsLoadingAudio
-                        ? "Đang tải audio..."
-                        : isAudio
-                          ? "Đang nhận dạng audio..."
-                          : "Đang trích xuất văn bản..."}
-                    </span>
-                    {processingStep === "extracting" ? (
-                      <div className="flex w-full max-w-xs flex-col items-center gap-2">
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-primary-500 transition-all duration-500 ease-out"
-                            style={{ width: `${translateProgress}%` }}
-                          />
-                        </div>
-                        <span className="text-lg font-semibold text-primary-600">
-                          {translateProgress}%
-                        </span>
-                      </div>
-                    ) : null}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card className="rounded-md border border-slate-200 shadow-none ring-0">
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  Văn bản nguồn
+                  <div className="shrink-0 text-right text-sm text-muted-foreground border-l border-l-gray-200 pl-2">
+                    {sourceText.length} ký tự
                   </div>
-                ) : null}
-              </div>
-              <div className="flex justify-end gap-2">
-                {processingStep === "translating" ? (
+                </CardTitle>
+
+                <div className="flex flex-wrap gap-2 sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!hasSourceText}
+                    onClick={() =>
+                      void copyText(sourceText, "Đã sao chép văn bản nguồn.")
+                    }
+                  >
+                    <Copy className="mr-2 size-4" />
+                    Sao chép
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!hasSourceText || isBusy}
+                    onClick={() => {
+                      setSourceText("");
+                      setTranslatedText("");
+                      updateTranslateProgress(0);
+                    }}
+                  >
+                    <RotateCcw className="mr-2 size-4" />
+                    Xóa
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-2">
+                <div className="relative">
+                  <Textarea
+                    value={sourceText}
+                    onChange={(event) => {
+                      setSourceText(event.target.value);
+                      setTranslatedText("");
+                      updateTranslateProgress(0);
+                    }}
+                    disabled={isBusy}
+                    placeholder="Nội dung trích xuất sẽ hiển thị tại đây."
+                    className="h-94 min-h-94 max-h-94 resize-none overflow-y-auto p-4 text-sm leading-6"
+                  />
+                  {visibleIsLoadingAudio || processingStep === "extracting" ? (
+                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md bg-gray-50 p-6 text-center text-sm text-muted-foreground">
+                      <LoaderCircle className="size-8 animate-spin text-primary-500" />
+                      <span>
+                        {visibleIsLoadingAudio
+                          ? "Đang tải audio..."
+                          : isAudio
+                            ? "Đang nhận dạng audio..."
+                            : "Đang trích xuất văn bản..."}
+                      </span>
+                      {processingStep === "extracting" ? (
+                        <div className="flex w-full max-w-xs flex-col items-center gap-2">
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-primary-500 transition-all duration-500 ease-out"
+                              style={{ width: `${translateProgress}%` }}
+                            />
+                          </div>
+                          <span className="text-lg font-semibold text-primary-600">
+                            {translateProgress}%
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="flex justify-end gap-2">
+                  {processingStep === "translating" ? (
+                    <Button
+                      className="w-fit"
+                      type="button"
+                      variant="outline"
+                      onClick={cancelTranslate}
+                    >
+                      <XCircle className="mr-2 size-4" />
+                      Hủy dịch
+                    </Button>
+                  ) : null}
                   <Button
                     className="w-fit"
                     type="button"
-                    variant="outline"
-                    onClick={cancelTranslate}
+                    disabled={!hasSourceText || isBusy}
+                    onClick={() => void translateText()}
                   >
-                    <XCircle className="mr-2 size-4" />
-                    Hủy dịch
+                    {processingStep === "translating" ? (
+                      <LoaderCircle className="mr-2 size-4 animate-spin" />
+                    ) : (
+                      <Languages className="mr-2 size-4" />
+                    )}
+                    {processingStep === "translating"
+                      ? `Đang dịch... ${translateProgress}%`
+                      : "Dịch văn bản"}
                   </Button>
-                ) : null}
-                <Button
-                  className="w-fit"
-                  type="button"
-                  disabled={!hasSourceText || isBusy}
-                  onClick={() => void translateText()}
-                >
-                  {processingStep === "translating" ? (
-                    <LoaderCircle className="mr-2 size-4 animate-spin" />
-                  ) : (
-                    <Languages className="mr-2 size-4" />
-                  )}
-                  {processingStep === "translating"
-                    ? `Đang dịch... ${translateProgress}%`
-                    : "Dịch văn bản"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card className="rounded-md border border-slate-200 shadow-none ring-0">
-            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle>{outputTitle}</CardTitle>
+            <Card className="rounded-md border border-slate-200 shadow-none ring-0">
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle>{outputTitle}</CardTitle>
 
-              <div className="flex flex-wrap gap-2 sm:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!translatedText.trim()}
-                  onClick={() =>
-                    void copyText(translatedText, "Đã sao chép bản dịch.")
-                  }
-                >
-                  <Copy className="mr-2 size-4" />
-                  Sao chép kết quả
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!translatedText.trim() || Boolean(exportingFormat)}
-                  onClick={() => void downloadTranslatedFile("docx")}
-                >
-                  {exportingFormat === "docx" ? (
-                    <LoaderCircle className="mr-2 size-4 animate-spin" />
-                  ) : (
-                    <Download className="mr-2 size-4" />
-                  )}
-                  DOCX
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!translatedText.trim() || Boolean(exportingFormat)}
-                  onClick={() => void downloadTranslatedFile("pdf")}
-                >
-                  {exportingFormat === "pdf" ? (
-                    <LoaderCircle className="mr-2 size-4 animate-spin" />
-                  ) : (
-                    <Download className="mr-2 size-4" />
-                  )}
-                  PDF
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {processingStep === "translating" ? (
-                <div className="flex h-94 min-h-94 max-h-94 flex-col items-center justify-center gap-3 rounded-md border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
-                  <LoaderCircle className="size-8 animate-spin text-primary-500" />
-                  <div className="flex w-full max-w-xs flex-col items-center gap-2">
-                    <span>Đang dịch nội dung...</span>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary-500 transition-all duration-500 ease-out"
-                        style={{ width: `${translateProgress}%` }}
-                      />
-                    </div>
-                    <span className="font-medium text-primary-600">
-                      {translateProgress}%
-                    </span>
-                  </div>
+                <div className="flex flex-wrap gap-2 sm:justify-end">
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={cancelTranslate}
+                    disabled={!translatedText.trim()}
+                    onClick={() =>
+                      void copyText(translatedText, "Đã sao chép bản dịch.")
+                    }
                   >
-                    <XCircle className="mr-1 size-4" />
-                    Hủy dịch
+                    <Copy className="mr-2 size-4" />
+                    Sao chép kết quả
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={
+                      !translatedText.trim() || Boolean(exportingFormat)
+                    }
+                    onClick={() => void downloadTranslatedFile("docx")}
+                  >
+                    {exportingFormat === "docx" ? (
+                      <LoaderCircle className="mr-2 size-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 size-4" />
+                    )}
+                    DOCX
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={
+                      !translatedText.trim() || Boolean(exportingFormat)
+                    }
+                    onClick={() => void downloadTranslatedFile("pdf")}
+                  >
+                    {exportingFormat === "pdf" ? (
+                      <LoaderCircle className="mr-2 size-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 size-4" />
+                    )}
+                    PDF
                   </Button>
                 </div>
-              ) : translatedText ? (
-                <div className="h-94 min-h-94 max-h-94 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-6">
-                  {translatedText}
-                </div>
-              ) : (
-                <div className="flex h-94 min-h-94 max-h-94 items-center justify-center rounded-md border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
-                  Bản dịch sẽ hiển thị ở đây.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </CardHeader>
+              <CardContent>
+                {processingStep === "translating" ? (
+                  <div className="flex h-94 min-h-94 max-h-94 flex-col items-center justify-center gap-3 rounded-md border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+                    <LoaderCircle className="size-8 animate-spin text-primary-500" />
+                    <div className="flex w-full max-w-xs flex-col items-center gap-2">
+                      <span>Đang dịch nội dung...</span>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary-500 transition-all duration-500 ease-out"
+                          style={{ width: `${translateProgress}%` }}
+                        />
+                      </div>
+                      <span className="font-medium text-primary-600">
+                        {translateProgress}%
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={cancelTranslate}
+                    >
+                      <XCircle className="mr-1 size-4" />
+                      Hủy dịch
+                    </Button>
+                  </div>
+                ) : translatedText ? (
+                  <div className="h-94 min-h-94 max-h-94 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-6">
+                    {translatedText}
+                  </div>
+                ) : (
+                  <div className="flex h-94 min-h-94 max-h-94 items-center justify-center rounded-md border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+                    Bản dịch sẽ hiển thị ở đây.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
       ) : null}
     </PageLayout>
   );

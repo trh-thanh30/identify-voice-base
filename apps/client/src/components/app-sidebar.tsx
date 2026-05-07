@@ -108,17 +108,17 @@ const navigation: NavItem[] = [
     icon: Languages,
     children: [
       {
-        title: "D\u1ecbch tr\u1ef1c ti\u1ebfp",
+        title: "Dịch trực tiếp",
         url: ROUTES.TRANSLATE_LIVE,
         icon: Languages,
       },
       {
-        title: "D\u1ecbch t\u1ec7p tin",
+        title: "Dịch tệp tin",
         url: ROUTES.TRANSLATE_FILE,
         icon: FileText,
       },
       {
-        title: "Th\u1ed1ng k\u00ea b\u1ea3n d\u1ecbch",
+        title: "Thống kê bản dịch",
         url: ROUTES.ADMIN_TRANSLATIONS,
         icon: BarChart3,
       },

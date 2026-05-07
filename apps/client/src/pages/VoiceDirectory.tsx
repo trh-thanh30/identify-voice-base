@@ -1,5 +1,5 @@
 import { useDebounce } from "@/hooks/useDebounce";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronRight, IdCard, Loader2, Phone, UserRound } from "lucide-react";
 import { useState } from "react";
 
@@ -34,6 +34,7 @@ import { voiceDirectoryApi } from "@/feature/voice-directory/api/voice-directory
 import { VoiceDirectoryDetailSheet } from "@/feature/voice-directory/components/VoiceDirectoryDetailSheet";
 import { VoiceDirectorySearchBar } from "@/feature/voice-directory/components/VoiceDirectorySearchBar";
 import type { VoiceDirectorySearchField } from "@/feature/voice-directory/types/voice-directory.types";
+import { useScrollOffset } from "@/hooks/use-scroll-offset";
 import {
   GENDER_FILTER_OPTIONS,
   PAGE_SIZE_OPTIONS,
@@ -48,12 +49,15 @@ import {
   PassportPill,
 } from "./VoiceDirectory.helpers";
 
+const PAGINATION_SCROLL_OFFSET_Y = 128;
+
 export default function VoiceDirectory() {
   const [searchInput, setSearchInput] = useState("");
   const [selectedSearchField, setSelectedSearchField] =
     useState<VoiceDirectorySearchField | null>(null);
   const querySearch = useDebounce(searchInput.trim(), 500);
   const [page, setPage] = useState(1);
+  const [paginationScrollKey, setPaginationScrollKey] = useState(0);
   const [pageSize, setPageSize] =
     useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [selectedGender, setSelectedGender] =
@@ -83,6 +87,7 @@ export default function VoiceDirectory() {
         sort_by: sortBy,
         sort_order: sortOrder,
       }),
+    placeholderData: keepPreviousData,
   });
 
   const items = data?.items ?? [];
@@ -92,10 +97,27 @@ export default function VoiceDirectory() {
   const sortValue = `${sortBy}:${sortOrder}` as const;
   const paginationItems = buildPaginationItems(page, totalPages);
   const hasActiveFilter = Boolean(querySearch) || selectedGender !== "all";
+  const { targetRef: listTopRef, scrollToOffset } =
+    useScrollOffset<HTMLDivElement>({
+      behavior: "auto",
+      enabled: paginationScrollKey > 0,
+      offsetY: PAGINATION_SCROLL_OFFSET_Y,
+      scrollElement: true,
+      scrollKey: paginationScrollKey,
+    });
 
   const openDetail = (id: string) => {
     setSelectedId(id);
     setSheetOpen(true);
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    const clampedPage = Math.min(Math.max(nextPage, 1), totalPages);
+    if (clampedPage === page) return;
+
+    scrollToOffset();
+    setPage(clampedPage);
+    setPaginationScrollKey((current) => current + 1);
   };
 
   const handleSheetOpenChange = (open: boolean) => {
@@ -199,7 +221,10 @@ export default function VoiceDirectory() {
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-sm no-scrollbar">
+      <div
+        ref={listTopRef}
+        className="relative min-h-0 flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-sm no-scrollbar"
+      >
         {isLoading ? (
           <div className="flex h-full min-h-48 items-center justify-center p-8">
             <Loader2 className="size-8 animate-spin text-slate-400" />
@@ -371,7 +396,7 @@ export default function VoiceDirectory() {
               <PaginationItem>
                 <PaginationPrevious
                   type="button"
-                  onClick={() => setPage((current) => Math.max(current - 1, 1))}
+                  onClick={() => handlePageChange(page - 1)}
                   disabled={page <= 1 || isFetching}
                 />
               </PaginationItem>
@@ -384,7 +409,7 @@ export default function VoiceDirectory() {
                     <PaginationLink
                       type="button"
                       isActive={item === page}
-                      onClick={() => setPage(item)}
+                      onClick={() => handlePageChange(item)}
                       disabled={isFetching}
                     >
                       {item}
@@ -396,9 +421,7 @@ export default function VoiceDirectory() {
               <PaginationItem>
                 <PaginationNext
                   type="button"
-                  onClick={() =>
-                    setPage((current) => Math.min(current + 1, totalPages))
-                  }
+                  onClick={() => handlePageChange(page + 1)}
                   disabled={page >= totalPages || isFetching}
                 />
               </PaginationItem>

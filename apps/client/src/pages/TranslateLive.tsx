@@ -5,6 +5,7 @@ import {
   LoaderCircle,
   RotateCcw,
   Sparkles,
+  XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -279,6 +280,15 @@ export default function TranslateLive() {
     }
   };
 
+  const cancelTranslate = () => {
+    if (!isTranslating) return;
+
+    translateRequestIdRef.current += 1;
+    setIsTranslating(false);
+    updateTranslateProgress(0);
+    toast.info("Đã hủy tiến trình dịch.");
+  };
+
   return (
     <PageLayout
       title="Dịch trực tiếp"
@@ -408,7 +418,18 @@ export default function TranslateLive() {
               placeholder="Nhập văn bản cần dịch tại đây."
               className="min-h-0 flex-1 resize-none p-4 text-sm leading-6"
             />
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {isTranslating ? (
+                <Button
+                  className="w-fit"
+                  type="button"
+                  variant="outline"
+                  onClick={cancelTranslate}
+                >
+                  <XCircle className="mr-2 size-4" />
+                  Hủy dịch
+                </Button>
+              ) : null}
               <Button
                 className="w-fit"
                 type="button"
@@ -494,6 +515,14 @@ export default function TranslateLive() {
                     {translateProgress}%
                   </span>
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={cancelTranslate}
+                >
+                  <XCircle className="mr-1 size-4" />
+                  Hủy dịch
+                </Button>
               </div>
             ) : translatedText ? (
               <div className="h-full min-h-0 overflow-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-6">

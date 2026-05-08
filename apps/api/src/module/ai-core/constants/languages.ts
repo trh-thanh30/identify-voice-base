@@ -1,20 +1,3 @@
-export const OCR_LANGUAGES = ['vi', 'en', 'de', 'fr', 'ja', 'ko'] as const;
-
-export type OcrLanguage = (typeof OCR_LANGUAGES)[number];
-
-export const SPEECH_TO_TEXT_LANGUAGES = [
-  'vi',
-  'en',
-  'zh',
-  'ja',
-  'ko',
-  'fr',
-  'ru',
-  'de',
-] as const;
-
-export type SpeechToTextLanguage = (typeof SPEECH_TO_TEXT_LANGUAGES)[number];
-
 export const TRANSLATION_LANGUAGES = [
   'zh',
   'zh-Hant',
@@ -33,6 +16,7 @@ export const TRANSLATION_LANGUAGES = [
   'ar',
   'fa',
   'he',
+  'tr',
   'hi',
   'bn',
   'ur',
@@ -57,3 +41,11 @@ export const TRANSLATION_LANGUAGES = [
 ] as const;
 
 export type TranslationLanguage = (typeof TRANSLATION_LANGUAGES)[number];
+
+export const OCR_LANGUAGES = TRANSLATION_LANGUAGES;
+
+export type OcrLanguage = TranslationLanguage;
+
+export const SPEECH_TO_TEXT_LANGUAGES = TRANSLATION_LANGUAGES;
+
+export type SpeechToTextLanguage = TranslationLanguage;

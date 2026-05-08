@@ -112,6 +112,9 @@ export default function TranslateFile() {
   const [selectedFile, setSelectedFile] =
     useState<SelectedTranslateFile | null>(null);
   const [sourceLanguage, setSourceLanguage] = useState(AUTO_LANGUAGE);
+  const [detectedSourceLanguage, setDetectedSourceLanguage] = useState<
+    string | null
+  >(null);
   const [targetLanguage, setTargetLanguage] = useState(DEFAULT_TARGET_LANGUAGE);
   const [returnTimestamp, setReturnTimestamp] = useState(false);
   const [denoiseAudio, setDenoiseAudio] = useState(false);
@@ -157,7 +160,10 @@ export default function TranslateFile() {
       ? "Ng\u00f4n ng\u1eef OCR"
       : "Ng\u00f4n ng\u1eef ngu\u1ed3n";
 
-  const detectSourceLanguage = async (text: string) => {
+  const detectSourceLanguage = async (
+    text: string,
+    sourceIsAudio = isAudio,
+  ) => {
     const normalizedText = text.trim();
     if (!normalizedText) return null;
 
@@ -170,7 +176,7 @@ export default function TranslateFile() {
       );
       const supportedLanguage = getSupportedSourceLanguage(
         detectedLanguage,
-        isAudio,
+        sourceIsAudio,
       );
 
       if (supportedLanguage) {
@@ -200,6 +206,7 @@ export default function TranslateFile() {
   const resetResult = () => {
     setSourceText("");
     setTranslatedText("");
+    setDetectedSourceLanguage(null);
     setErrorMessage(null);
     updateTranslateProgress(0);
   };
@@ -233,6 +240,7 @@ export default function TranslateFile() {
     const requestId = translateRequestIdRef.current + 1;
     translateRequestIdRef.current = requestId;
     const isCurrentRequest = () => requestId === translateRequestIdRef.current;
+    const sourceIsAuto = language === AUTO_LANGUAGE;
 
     const loadingToastId = toast.loading(
       file.kind === "audio"
@@ -286,13 +294,11 @@ export default function TranslateFile() {
         if (!isCurrentRequest() || !result) return "";
 
         const text = getTranscriptText(result.transcript);
-        const detectedLanguage =
-          getSupportedSourceLanguage(result.language ?? null, true) ??
-          (await detectSourceLanguage(text));
-
-        if (detectedLanguage) {
-          setSourceLanguage(detectedLanguage);
-        }
+        const detectedLanguage = sourceIsAuto
+          ? await detectSourceLanguage(text, true)
+          : null;
+        if (!isCurrentRequest()) return "";
+        setDetectedSourceLanguage(detectedLanguage);
         setSourceText(text);
         toast.success("Đã nhận dạng audio.", {
           id: loadingToastId,
@@ -342,7 +348,11 @@ export default function TranslateFile() {
       if (!isCurrentRequest() || !result) return "";
 
       const text = getOcrText(result.results);
-      await detectSourceLanguage(text);
+      const detectedLanguage = sourceIsAuto
+        ? await detectSourceLanguage(text, false)
+        : null;
+      if (!isCurrentRequest()) return "";
+      setDetectedSourceLanguage(detectedLanguage);
 
       setSourceText(text);
       toast.success("Đã trích xuất văn bản.", {
@@ -378,6 +388,10 @@ export default function TranslateFile() {
     setErrorMessage(null);
 
     const isCurrentRequest = () => requestId === translateRequestIdRef.current;
+    const sourceLang =
+      sourceLanguage === AUTO_LANGUAGE
+        ? (detectedSourceLanguage ?? undefined)
+        : sourceLanguage;
 
     try {
       const job =
@@ -385,15 +399,13 @@ export default function TranslateFile() {
           ? await translateApi.createTranslateSummarizeJob({
               sourceText: normalizedText,
               targetLang: translateTargetLanguage,
-              sourceLang:
-                sourceLanguage === AUTO_LANGUAGE ? undefined : sourceLanguage,
+              sourceLang,
               sourceFileType: getSelectedFileType(selectedFile),
             })
           : await translateApi.createTranslateJob({
               sourceText: normalizedText,
               targetLang: translateTargetLanguage,
-              sourceLang:
-                sourceLanguage === AUTO_LANGUAGE ? undefined : sourceLanguage,
+              sourceLang,
               sourceFileType: getSelectedFileType(selectedFile),
             });
 
@@ -461,30 +473,23 @@ export default function TranslateFile() {
   };
 
   const handleSelectedFileChange = (nextFile: SelectedTranslateFile | null) => {
-    const nextSourceLanguageOptions = getSourceLanguageOptionsByKind(
-      nextFile?.kind,
-    );
-    const nextSourceLanguage = nextSourceLanguageOptions.some(
-      (language) => language.value === sourceLanguage,
-    )
-      ? sourceLanguage
-      : AUTO_LANGUAGE;
-
     autoExtractedAudioFileRef.current = null;
     setSelectedFile(nextFile);
-    setSourceLanguage(nextSourceLanguage);
+    setSourceLanguage(AUTO_LANGUAGE);
+    setDetectedSourceLanguage(null);
     setReturnTimestamp(false);
     setDenoiseAudio(false);
     setVisibleIsLoadingAudio(nextFile?.kind === "audio");
     resetResult();
 
     if (nextFile && nextFile.kind !== "audio") {
-      void extractText(nextFile, nextSourceLanguage, false, false);
+      void extractText(nextFile, AUTO_LANGUAGE, false, false);
     }
   };
 
   const handleSourceLanguageChange = (value: string) => {
     setSourceLanguage(value);
+    setDetectedSourceLanguage(null);
 
     if (selectedFile?.kind === "audio") {
       if (visibleIsLoadingAudio) return;
@@ -812,6 +817,7 @@ export default function TranslateFile() {
                     onChange={(event) => {
                       setSourceText(event.target.value);
                       setTranslatedText("");
+                      setDetectedSourceLanguage(null);
                       updateTranslateProgress(0);
                     }}
                     disabled={isBusy}

@@ -29,28 +29,6 @@ export const IMAGE_EXTENSIONS = [
 export const ACCEPTED_TRANSLATE_FILE_INPUT =
   "audio/*,video/mp4,image/*,.pdf,.docx,.txt,.mp3,.wav,.m4a,.mp4,.webm,.ogg,.flac";
 
-export const SPEECH_LANGUAGES = [
-  { value: AUTO_LANGUAGE, label: "Tự động" },
-  { value: "vi", label: "Tiếng Việt" },
-  { value: "en", label: "Tiếng Anh" },
-  { value: "zh", label: "Tiếng Trung" },
-  { value: "ja", label: "Tiếng Nhật" },
-  { value: "ko", label: "Tiếng Hàn" },
-  { value: "fr", label: "Tiếng Pháp" },
-  { value: "ru", label: "Tiếng Nga" },
-  { value: "de", label: "Tiếng Đức" },
-] as const;
-
-export const OCR_LANGUAGES = [
-  { value: AUTO_LANGUAGE, label: "Tự động nhận diện" },
-  { value: "vi", label: "Tiếng Việt" },
-  { value: "en", label: "Tiếng Anh" },
-  { value: "de", label: "Tiếng Đức" },
-  { value: "fr", label: "Tiếng Pháp" },
-  { value: "ja", label: "Tiếng Nhật" },
-  { value: "ko", label: "Tiếng Hàn" },
-] as const;
-
 export const TRANSLATION_LANGUAGES = [
   { value: "vi", label: "Tiếng Việt" },
   { value: "en", label: "Tiếng Anh" },
@@ -70,6 +48,7 @@ export const TRANSLATION_LANGUAGES = [
   { value: "ar", label: "Tiếng Ả Rập" },
   { value: "fa", label: "Tiếng Ba Tư" },
   { value: "he", label: "Tiếng Do Thái" },
+  { value: "tr", label: "Tiếng Thổ Nhĩ Kỳ" },
   { value: "hi", label: "Tiếng Hindi" },
   { value: "bn", label: "Tiếng Bengali" },
   { value: "ur", label: "Tiếng Urdu" },
@@ -90,6 +69,16 @@ export const TRANSLATION_LANGUAGES = [
   { value: "kk", label: "Tiếng Kazakh" },
   { value: "mn", label: "Tiếng Mông Cổ" },
   { value: "ug", label: "Tiếng Duy Ngô Nhĩ" },
+] as const;
+
+export const SPEECH_LANGUAGES = [
+  { value: AUTO_LANGUAGE, label: "Tự động nhận diện" },
+  ...TRANSLATION_LANGUAGES,
+] as const;
+
+export const OCR_LANGUAGES = [
+  { value: AUTO_LANGUAGE, label: "Tự động nhận diện" },
+  ...TRANSLATION_LANGUAGES,
 ] as const;
 
 export const LIVE_TRANSLATE_SOURCE_LANGUAGE_OPTIONS = [

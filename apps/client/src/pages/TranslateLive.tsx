@@ -396,6 +396,7 @@ export default function TranslateLive() {
                 disabled={!hasSourceText || isTranslating}
                 onClick={() => {
                   translateRequestIdRef.current += 1;
+                  updateSourceLanguage(AUTO_LANGUAGE);
                   setSourceText("");
                   setTranslatedText("");
                   setIsTranslating(false);
@@ -411,6 +412,7 @@ export default function TranslateLive() {
             <Textarea
               value={sourceText}
               onChange={(event) => {
+                updateSourceLanguage(AUTO_LANGUAGE);
                 setSourceText(event.target.value);
                 setTranslatedText("");
                 updateTranslateProgress(0);

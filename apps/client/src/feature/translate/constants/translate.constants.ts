@@ -1,9 +1,5 @@
 export const AUTO_LANGUAGE = "auto";
 
-export const MAX_TRANSLATE_FILE_SIZE_MB = 200; // 200MB
-export const MAX_TRANSLATE_FILE_SIZE_BYTES =
-  MAX_TRANSLATE_FILE_SIZE_MB * 1024 * 1024;
-
 export const AUDIO_EXTENSIONS = [
   ".mp3",
   ".wav",

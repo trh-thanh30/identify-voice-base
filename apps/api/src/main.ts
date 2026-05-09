@@ -52,11 +52,9 @@ async function bootstrap() {
 
     // Get app config
     const appCfg = app.get<ConfigType<typeof appConfig>>(appConfig.KEY);
-    const bodyLimit = process.env.API_BODY_LIMIT ?? '25mb';
-
     app.use(
       json({
-        limit: bodyLimit,
+        limit: Infinity,
         verify: (req, _res, buf) => {
           (req as any).rawBody = buf;
         },
@@ -65,7 +63,7 @@ async function bootstrap() {
     app.use(
       urlencoded({
         extended: true,
-        limit: bodyLimit,
+        limit: Infinity,
         verify: (req, _res, buf) => {
           (req as any).rawBody = buf;
         },

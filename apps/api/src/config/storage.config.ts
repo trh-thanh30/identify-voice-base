@@ -43,7 +43,6 @@ export default registerAs('storage', () => {
     cdnUrl: (
       process.env.STORAGE_CDN_URL ?? 'http://localhost:3000/cdn'
     ).replace(/\/$/, ''),
-    maxSize: parseInt(process.env.STORAGE_MAX_SIZE ?? '52428800', 10),
     allowedMimes,
 
     /**

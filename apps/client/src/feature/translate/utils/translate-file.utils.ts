@@ -2,8 +2,6 @@ import {
   AUDIO_EXTENSIONS,
   DOCUMENT_EXTENSIONS,
   IMAGE_EXTENSIONS,
-  MAX_TRANSLATE_FILE_SIZE_BYTES,
-  MAX_TRANSLATE_FILE_SIZE_MB,
   OCR_LANGUAGES,
   SPEECH_LANGUAGES,
   TRANSLATION_LANGUAGES,
@@ -80,10 +78,6 @@ export function detectTranslateFileKind(file: File): TranslateFileKind | null {
 export function validateTranslateFile(file: File): SelectedTranslateFile {
   if (file.size <= 0) {
     throw new Error("Tệp không hợp lệ hoặc đang rỗng.");
-  }
-
-  if (file.size > MAX_TRANSLATE_FILE_SIZE_BYTES) {
-    throw new Error(`Dung lượng tối đa là ${MAX_TRANSLATE_FILE_SIZE_MB} MB.`);
   }
 
   const kind = detectTranslateFileKind(file);

@@ -18,8 +18,6 @@ import { catchError, firstValueFrom } from 'rxjs';
 import { SpeechToTextRequestDto } from '../dto/speech-to-text-request.dto';
 import { AudioNormalizeService } from '../service/audio-normalize.service';
 
-const S2T_FORCE_SIMPLE_OPTIONS_SIZE_BYTES = 50 * 1024 * 1024;
-
 @Injectable()
 export class AiSpeechToTextUseCase {
   private readonly logger = new Logger(AiSpeechToTextUseCase.name);
@@ -56,10 +54,6 @@ export class AiSpeechToTextUseCase {
     });
   }
 
-  private shouldForceSimpleOptions(fileSize: number) {
-    return fileSize > S2T_FORCE_SIMPLE_OPTIONS_SIZE_BYTES;
-  }
-
   async execute(file: Express.Multer.File, dto: SpeechToTextRequestDto) {
     if (!file) {
       throw new UnprocessableEntityException('Vui lòng đính kèm file audio');
@@ -82,22 +76,11 @@ export class AiSpeechToTextUseCase {
         knownLength: normalizedAudioStat.size,
       });
 
-      const forceSimpleOptions = this.shouldForceSimpleOptions(
-        normalizedAudioStat.size,
-      );
       const params = {
         ...(dto.language ? { language: dto.language } : {}),
         return_timestamp: dto.return_timestamp ?? false,
-        denoise_audio: forceSimpleOptions
-          ? false
-          : (dto.denoise_audio ?? false),
+        denoise_audio: dto.denoise_audio ?? false,
       };
-
-      if (forceSimpleOptions) {
-        this.logger.warn(
-          `S2T file sau chuẩn hóa lớn hơn 50MB, ép denoise_audio=false: file=${file.originalname} normalizedFile=${forwardedFileName} originalSize=${file.size} normalizedSize=${normalizedAudioStat.size}`,
-        );
-      }
 
       const contentLength = await this.getFormDataLength(formData);
 

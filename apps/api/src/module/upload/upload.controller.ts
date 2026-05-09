@@ -72,7 +72,7 @@ export class UploadController {
     },
   })
   @ApiSuccess('Upload thành công')
-  @UseInterceptors(FilesInterceptor('audio', 10))
+  @UseInterceptors(FilesInterceptor('audio', 1))
   async uploadAudio(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() body: UploadAudioDto,

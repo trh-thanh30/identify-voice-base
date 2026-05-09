@@ -10,7 +10,6 @@ export const envSchema = z.object({
   // Application
   APP_NAME: z.string().default('nest-basic-prisma'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-  API_BODY_LIMIT: z.string().default('25mb'),
 
   // Database
   DB_HOST: z.string().default('localhost'),
@@ -64,7 +63,6 @@ export const envSchema = z.object({
 
   // File Upload Configuration
   UPLOAD_DEST: z.string().default('./uploads'),
-  MAX_FILE_SIZE: z.coerce.number().int().positive().default(10485760),
 
   // Logging Configuration
   LOG_LEVEL: z.string().default('info'),
@@ -97,8 +95,6 @@ export const envSchema = z.object({
   // CDN / Public Access
   ASSET_CDN_URL: z.string().default('http://localhost:3000/cdn'),
 
-  // File Upload Limits
-  ASSET_MAX_FILE_SIZE: z.coerce.number().int().positive().default(10485760), // 10 MB
   ASSET_ALLOWED_MIME_TYPES: z
     .string()
     .default(

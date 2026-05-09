@@ -459,12 +459,12 @@ multipart/form-data
 
 Request fields FE gửi vào backend:
 
-| Field              | Vị trí FE -> BE | Kiểu           | Bắt buộc | Mặc định    | Ghi chú                        |
-| :----------------- | :-------------- | :------------- | :------- | :---------- | :----------------------------- |
-| `file`             | form-data       | File           | Có       | -           | File audio                     |
-| `language`         | form-data       | string         | Không    | Auto detect | Một trong S2T languages        |
-| `return_timestamp` | form-data       | boolean/string | Không    | `false`     | Backend gửi query sang AI Core |
-| `denoise_audio`    | form-data       | boolean/string | Không    | `false`     | Backend gửi query sang AI Core |
+| Field              | Vị trí FE -> BE | Kiểu           | Bắt buộc | Mặc định    | Ghi chú                                                           |
+| :----------------- | :-------------- | :------------- | :------- | :---------- | :---------------------------------------------------------------- |
+| `file`             | form-data       | File           | Có       | -           | File audio                                                        |
+| `language`         | form-data       | string         | Không    | Auto detect | Một trong S2T languages                                           |
+| `return_timestamp` | form-data       | boolean/string | Không    | `false`     | Backend gửi query sang AI Core                                    |
+| `denoise_audio`    | form-data       | boolean/string | Không    | `false`     | Backend gửi query sang AI Core, tự ép `false` nếu audio vượt 50MB |
 
 Backend gọi sang AI Core:
 
@@ -474,11 +474,11 @@ POST {AI_CORE_SPEECH_TO_TEXT_URL}/s2t_ml?return_timestamp=true&denoise_audio=fal
 
 Query params gửi sang AI Core:
 
-| Param              | Kiểu    | Ghi chú                    |
-| :----------------- | :------ | :------------------------- |
-| `language`         | string  | Chỉ gửi nếu FE truyền      |
-| `return_timestamp` | boolean | Luôn gửi, mặc định `false` |
-| `denoise_audio`    | boolean | Luôn gửi, mặc định `false` |
+| Param              | Kiểu    | Ghi chú                                                                                         |
+| :----------------- | :------ | :---------------------------------------------------------------------------------------------- |
+| `language`         | string  | Chỉ gửi nếu FE truyền                                                                           |
+| `return_timestamp` | boolean | Luôn gửi, mặc định `false`                                                                      |
+| `denoise_audio`    | boolean | Luôn gửi, mặc định `false`; tự ép `false` nếu file upload hoặc file WAV sau normalize vượt 50MB |
 
 Body gửi sang AI Core:
 

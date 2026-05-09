@@ -253,7 +253,8 @@ export class AiCoreController {
         denoise_audio: {
           type: 'boolean',
           default: false,
-          description: 'true: yêu cầu AI CORE khử nhiễu audio trước khi S2T',
+          description:
+            'true: yêu cầu AI CORE khử nhiễu audio trước khi S2T. Backend tự ép false nếu audio vượt 50MB.',
         },
       },
     },

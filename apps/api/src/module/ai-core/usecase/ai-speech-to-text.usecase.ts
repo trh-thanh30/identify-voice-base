@@ -18,6 +18,8 @@ import { catchError, firstValueFrom } from 'rxjs';
 import { SpeechToTextRequestDto } from '../dto/speech-to-text-request.dto';
 import { AudioNormalizeService } from '../service/audio-normalize.service';
 
+const S2T_DENOISE_MAX_AUDIO_BYTES = 50 * 1024 * 1024;
+
 @Injectable()
 export class AiSpeechToTextUseCase {
   private readonly logger = new Logger(AiSpeechToTextUseCase.name);
@@ -54,6 +56,16 @@ export class AiSpeechToTextUseCase {
     });
   }
 
+  private shouldForceDisableDenoise(
+    file: Express.Multer.File,
+    normalizedAudioSize: number,
+  ) {
+    return (
+      file.size > S2T_DENOISE_MAX_AUDIO_BYTES ||
+      normalizedAudioSize > S2T_DENOISE_MAX_AUDIO_BYTES
+    );
+  }
+
   async execute(file: Express.Multer.File, dto: SpeechToTextRequestDto) {
     if (!file) {
       throw new UnprocessableEntityException('Vui lòng đính kèm file audio');
@@ -76,10 +88,16 @@ export class AiSpeechToTextUseCase {
         knownLength: normalizedAudioStat.size,
       });
 
+      const denoiseAudio = this.shouldForceDisableDenoise(
+        file,
+        normalizedAudioStat.size,
+      )
+        ? false
+        : (dto.denoise_audio ?? false);
       const params = {
         ...(dto.language ? { language: dto.language } : {}),
         return_timestamp: dto.return_timestamp ?? false,
-        denoise_audio: dto.denoise_audio ?? false,
+        denoise_audio: denoiseAudio,
       };
 
       const contentLength = await this.getFormDataLength(formData);

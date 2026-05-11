@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 import { PageLayout } from "@/components/PageLayout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -38,9 +39,11 @@ import {
 import { useDownloadTranslatedFile } from "@/feature/translate/hooks/use-download-translated-file";
 import type {
   SelectedTranslateFile,
+  SpeechToTextResponse,
   TranslateMode,
 } from "@/feature/translate/types/translate.types";
 import {
+  getLanguageLabel,
   getOcrText,
   getTranscriptText,
 } from "@/feature/translate/utils/translate-file.utils";
@@ -179,10 +182,6 @@ export default function TranslateFile() {
         sourceIsAudio,
       );
 
-      if (supportedLanguage) {
-        setSourceLanguage(supportedLanguage);
-      }
-
       return supportedLanguage;
     } catch {
       toast.warning("Không thể tự nhận diện ngôn ngữ nguồn.");
@@ -293,12 +292,20 @@ export default function TranslateFile() {
 
         if (!isCurrentRequest() || !result) return "";
 
-        const text = getTranscriptText(result.transcript);
+        const speechResult = result as SpeechToTextResponse;
+        const text = getTranscriptText(speechResult.transcript);
         const detectedLanguage = sourceIsAuto
-          ? await detectSourceLanguage(text, true)
+          ? getSupportedSourceLanguage(
+              speechResult.language?.trim() ?? null,
+              true,
+            )
           : null;
+        const resolvedDetectedLanguage =
+          sourceIsAuto && !detectedLanguage
+            ? await detectSourceLanguage(text, true)
+            : detectedLanguage;
         if (!isCurrentRequest()) return "";
-        setDetectedSourceLanguage(detectedLanguage);
+        setDetectedSourceLanguage(resolvedDetectedLanguage);
         setSourceText(text);
         toast.success("Đã nhận dạng audio.", {
           id: loadingToastId,
@@ -491,11 +498,16 @@ export default function TranslateFile() {
     setSourceLanguage(value);
     setDetectedSourceLanguage(null);
 
-    if (selectedFile?.kind === "audio") {
+    if (!selectedFile) return;
+
+    if (selectedFile.kind === "audio") {
       if (visibleIsLoadingAudio) return;
 
       void extractText(selectedFile, value, returnTimestamp, denoiseAudio);
+      return;
     }
+
+    void extractText(selectedFile, value, false, false);
   };
 
   const handleReturnTimestampChange = (value: string) => {
@@ -528,6 +540,12 @@ export default function TranslateFile() {
         nextDenoiseAudio,
       );
     }
+  };
+
+  const handleTargetLanguageChange = (value: string) => {
+    setTargetLanguage(value);
+    setTranslatedText("");
+    updateTranslateProgress(0);
   };
 
   useEffect(() => {
@@ -612,6 +630,13 @@ export default function TranslateFile() {
                 ))}
               </SelectContent>
             </Select>
+            {sourceLanguage === AUTO_LANGUAGE && detectedSourceLanguage ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline">
+                  {`Nhận diện: ${getLanguageLabel(detectedSourceLanguage)}`}
+                </Badge>
+              </div>
+            ) : null}
           </div>
 
           {isAudio ? (
@@ -670,7 +695,7 @@ export default function TranslateFile() {
             </Label>
             <Select
               value={targetLanguage}
-              onValueChange={setTargetLanguage}
+              onValueChange={handleTargetLanguageChange}
               disabled={isBusy}
             >
               <SelectTrigger id="translate-target-language" className="w-full">

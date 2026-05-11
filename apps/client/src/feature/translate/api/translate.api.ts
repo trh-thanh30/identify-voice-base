@@ -57,6 +57,29 @@ function unwrapApiResponse<T>(payload: ApiResponse<T> | T): T {
   return payload as T;
 }
 
+function logSpeechToTextFormData(
+  action: "speechToText" | "createSpeechToTextJob",
+  formData: FormData,
+) {
+  const file = formData.get("file");
+  const language = formData.get("language");
+
+  console.log(`[S2T API][${action}] request payload`, {
+    hasLanguage: language !== null,
+    language,
+    returnTimestamp: formData.get("return_timestamp"),
+    denoiseAudio: formData.get("denoise_audio"),
+    file:
+      file instanceof File
+        ? {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          }
+        : file,
+  });
+}
+
 export const translateApi = {
   async ocr(payload: OcrRequest): Promise<OcrResponse> {
     const formData = new FormData();
@@ -113,6 +136,8 @@ export const translateApi = {
     );
     formData.append("denoise_audio", String(payload.denoiseAudio ?? false));
 
+    logSpeechToTextFormData("speechToText", formData);
+
     const response = await axiosInstance.post<
       ApiResponse<SpeechToTextResponse>
     >("/ai-core/speech-to-text", formData);
@@ -133,6 +158,8 @@ export const translateApi = {
       String(payload.returnTimestamp ?? false),
     );
     formData.append("denoise_audio", String(payload.denoiseAudio ?? false));
+
+    logSpeechToTextFormData("createSpeechToTextJob", formData);
 
     const response = await axiosInstance.post<
       ApiResponse<ExtractionJobCreateResponse>

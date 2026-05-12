@@ -101,6 +101,14 @@ export class AiSpeechToTextUseCase {
       };
 
       const contentLength = await this.getFormDataLength(formData);
+      const languageAttached = Object.prototype.hasOwnProperty.call(
+        params,
+        'language',
+      );
+
+      this.logger.log(
+        `AI S2T Request [POST ${url}] language=${dto.language ?? 'auto'} languageAttached=${languageAttached} originalFile=${file.originalname} forwardedFile=${forwardedFileName} originalSize=${file.size} normalizedSize=${normalizedAudioStat.size} forwardedContentLength=${contentLength} params=${JSON.stringify(params)}`,
+      );
 
       const response = (await firstValueFrom(
         this.httpService

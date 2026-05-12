@@ -112,6 +112,7 @@ export default function TranslateFile() {
   const translateProgressRef = useRef(0);
   const translateRequestIdRef = useRef(0);
   const autoExtractedAudioFileRef = useRef<File | null>(null);
+  const hasUserSelectedSourceLanguageRef = useRef(false);
   const [selectedFile, setSelectedFile] =
     useState<SelectedTranslateFile | null>(null);
   const [sourceLanguage, setSourceLanguage] = useState(AUTO_LANGUAGE);
@@ -213,6 +214,7 @@ export default function TranslateFile() {
   const resetPage = () => {
     translateRequestIdRef.current += 1;
     autoExtractedAudioFileRef.current = null;
+    hasUserSelectedSourceLanguageRef.current = false;
     setSelectedFile(null);
     setSourceLanguage(AUTO_LANGUAGE);
     setTargetLanguage(DEFAULT_TARGET_LANGUAGE);
@@ -481,8 +483,23 @@ export default function TranslateFile() {
 
   const handleSelectedFileChange = (nextFile: SelectedTranslateFile | null) => {
     autoExtractedAudioFileRef.current = null;
+    const nextSourceLanguageOptions = getSourceLanguageOptionsByKind(
+      nextFile?.kind,
+    );
+    const canKeepSourceLanguage = nextSourceLanguageOptions.some(
+      (language) => language.value === sourceLanguage,
+    );
+    const nextSourceLanguage =
+      hasUserSelectedSourceLanguageRef.current && canKeepSourceLanguage
+        ? sourceLanguage
+        : AUTO_LANGUAGE;
+
+    if (nextSourceLanguage === AUTO_LANGUAGE) {
+      hasUserSelectedSourceLanguageRef.current = false;
+    }
+
     setSelectedFile(nextFile);
-    setSourceLanguage(AUTO_LANGUAGE);
+    setSourceLanguage(nextSourceLanguage);
     setDetectedSourceLanguage(null);
     setReturnTimestamp(false);
     setDenoiseAudio(false);
@@ -490,11 +507,12 @@ export default function TranslateFile() {
     resetResult();
 
     if (nextFile && nextFile.kind !== "audio") {
-      void extractText(nextFile, AUTO_LANGUAGE, false, false);
+      void extractText(nextFile, nextSourceLanguage, false, false);
     }
   };
 
   const handleSourceLanguageChange = (value: string) => {
+    hasUserSelectedSourceLanguageRef.current = value !== AUTO_LANGUAGE;
     setSourceLanguage(value);
     setDetectedSourceLanguage(null);
 

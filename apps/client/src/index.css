@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400..700&family=Noto+Sans+Bengali:wght@100..900&family=Noto+Sans+Devanagari:wght@100..900&family=Noto+Sans+Gujarati:wght@100..900&family=Noto+Sans+Hebrew:wght@100..900&family=Noto+Sans+JP:wght@100..900&family=Noto+Sans+KR:wght@100..900&family=Noto+Sans+Khmer:wght@100..900&family=Noto+Sans+Lao:wght@100..900&family=Noto+Sans+Myanmar:wght@100..900&family=Noto+Sans+SC:wght@100..900&family=Noto+Sans+TC:wght@100..900&family=Noto+Sans+Tamil:wght@100..900&family=Noto+Sans+Telugu:wght@100..900&family=Noto+Sans+Thai:wght@100..900&family=Noto+Serif+Tibetan:wght@100..900&display=swap");
 
 @custom-variant dark (&:is(.dark *));
 
@@ -10,6 +11,18 @@
   --font-sans: "Be Vietnam Pro", sans-serif;
   --font-serif: "Be Vietnam Pro", serif;
   --font-playfair: "Playfair Display", serif;
+}
+
+:root {
+  --app-font-sans: "Be Vietnam Pro", sans-serif;
+  --multilingual-font-sans: "Be Vietnam Pro", "Noto Sans JP", "Noto Sans KR",
+    "Noto Sans SC", "Noto Sans TC", "Noto Sans Thai", "Noto Sans Lao",
+    "Noto Sans Khmer", "Noto Sans Myanmar", "Noto Serif Tibetan",
+    "Noto Naskh Arabic", "Noto Sans Devanagari", "Noto Sans Bengali",
+    "Noto Sans Gujarati", "Noto Sans Telugu", "Noto Sans Tamil",
+    "Noto Sans Hebrew", "Apple SD Gothic Neo", "Hiragino Sans", "Yu Gothic",
+    "Meiryo", "Malgun Gothic", "Microsoft YaHei", "Microsoft JhengHei",
+    "Leelawadee UI", sans-serif;
 }
 
 /* =====================
@@ -20,12 +33,12 @@
   *::before,
   *::after {
     box-sizing: border-box;
-    font-family: "Be Vietnam Pro", sans-serif;
+    font-family: var(--app-font-sans);
   }
 
   html {
     -webkit-text-size-adjust: 100%;
-    font-family: "Be Vietnam Pro", sans-serif;
+    font-family: var(--app-font-sans);
     line-height: 1.6;
     font-size: 18px;
     @apply font-sans;
@@ -38,7 +51,7 @@
     color: #111827;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-family: "Be Vietnam Pro", sans-serif !important;
+    font-family: var(--app-font-sans) !important;
     @apply bg-background text-foreground;
   }
 
@@ -81,6 +94,11 @@
    Container / Layout utilities
    ===================== */
 @layer utilities {
+  .multilingual-content {
+    font-family: var(--multilingual-font-sans);
+    font-synthesis: none;
+  }
+
   .container-default {
     width: 100%;
     max-width: 1280px;

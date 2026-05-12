@@ -13,14 +13,8 @@ import { toast } from "sonner";
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { translateApi } from "@/feature/translate/api/translate.api";
@@ -304,48 +298,28 @@ export default function TranslateLive() {
               <Label htmlFor="translate-live-source-language">
                 Ngôn ngữ nguồn
               </Label>
-              <Select
+              <Combobox
+                id="translate-live-source-language"
                 value={sourceLanguage}
                 onValueChange={updateSourceLanguage}
+                options={LIVE_TRANSLATE_SOURCE_LANGUAGE_OPTIONS}
                 disabled={isTranslating}
-              >
-                <SelectTrigger
-                  id="translate-live-source-language"
-                  className="w-full"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {LIVE_TRANSLATE_SOURCE_LANGUAGE_OPTIONS.map((language) => (
-                    <SelectItem key={language.value} value={language.value}>
-                      {language.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                searchPlaceholder="Tìm ngôn ngữ nguồn..."
+                emptyMessage="Không tìm thấy ngôn ngữ nguồn"
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="translate-live-target-language">Dịch sang</Label>
-              <Select
+              <Combobox
+                id="translate-live-target-language"
                 value={targetLanguage}
                 onValueChange={setTargetLanguage}
+                options={TRANSLATION_LANGUAGES}
                 disabled={isTranslating}
-              >
-                <SelectTrigger
-                  id="translate-live-target-language"
-                  className="w-full"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRANSLATION_LANGUAGES.map((language) => (
-                    <SelectItem key={language.value} value={language.value}>
-                      {language.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                searchPlaceholder="Tìm ngôn ngữ dịch..."
+                emptyMessage="Không tìm thấy ngôn ngữ dịch"
+              />
             </div>
           </div>
 
@@ -418,7 +392,7 @@ export default function TranslateLive() {
                 updateTranslateProgress(0);
               }}
               placeholder="Nhập văn bản cần dịch tại đây."
-              className="min-h-0 flex-1 resize-none p-4 text-sm leading-6"
+              className="multilingual-content min-h-0 flex-1 resize-none p-4 text-sm leading-6"
             />
             <div className="flex justify-end gap-2">
               {isTranslating ? (
@@ -527,7 +501,7 @@ export default function TranslateLive() {
                 </Button>
               </div>
             ) : translatedText ? (
-              <div className="h-full min-h-0 overflow-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-6">
+              <div className="multilingual-content h-full min-h-0 overflow-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-6">
                 {translatedText}
               </div>
             ) : (

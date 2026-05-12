@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -112,6 +113,7 @@ export default function TranslateFile() {
   const translateProgressRef = useRef(0);
   const translateRequestIdRef = useRef(0);
   const autoExtractedAudioFileRef = useRef<File | null>(null);
+  const hasUserSelectedSourceLanguageRef = useRef(false);
   const [selectedFile, setSelectedFile] =
     useState<SelectedTranslateFile | null>(null);
   const [sourceLanguage, setSourceLanguage] = useState(AUTO_LANGUAGE);
@@ -213,6 +215,7 @@ export default function TranslateFile() {
   const resetPage = () => {
     translateRequestIdRef.current += 1;
     autoExtractedAudioFileRef.current = null;
+    hasUserSelectedSourceLanguageRef.current = false;
     setSelectedFile(null);
     setSourceLanguage(AUTO_LANGUAGE);
     setTargetLanguage(DEFAULT_TARGET_LANGUAGE);
@@ -481,8 +484,23 @@ export default function TranslateFile() {
 
   const handleSelectedFileChange = (nextFile: SelectedTranslateFile | null) => {
     autoExtractedAudioFileRef.current = null;
+    const nextSourceLanguageOptions = getSourceLanguageOptionsByKind(
+      nextFile?.kind,
+    );
+    const canKeepSourceLanguage = nextSourceLanguageOptions.some(
+      (language) => language.value === sourceLanguage,
+    );
+    const nextSourceLanguage =
+      hasUserSelectedSourceLanguageRef.current && canKeepSourceLanguage
+        ? sourceLanguage
+        : AUTO_LANGUAGE;
+
+    if (nextSourceLanguage === AUTO_LANGUAGE) {
+      hasUserSelectedSourceLanguageRef.current = false;
+    }
+
     setSelectedFile(nextFile);
-    setSourceLanguage(AUTO_LANGUAGE);
+    setSourceLanguage(nextSourceLanguage);
     setDetectedSourceLanguage(null);
     setReturnTimestamp(false);
     setDenoiseAudio(false);
@@ -490,11 +508,12 @@ export default function TranslateFile() {
     resetResult();
 
     if (nextFile && nextFile.kind !== "audio") {
-      void extractText(nextFile, AUTO_LANGUAGE, false, false);
+      void extractText(nextFile, nextSourceLanguage, false, false);
     }
   };
 
   const handleSourceLanguageChange = (value: string) => {
+    hasUserSelectedSourceLanguageRef.current = value !== AUTO_LANGUAGE;
     setSourceLanguage(value);
     setDetectedSourceLanguage(null);
 
@@ -614,22 +633,15 @@ export default function TranslateFile() {
             <Label htmlFor="translate-source-language">
               {sourceLanguageLabel}
             </Label>
-            <Select
+            <Combobox
+              id="translate-source-language"
               value={sourceLanguage}
               onValueChange={handleSourceLanguageChange}
+              options={sourceLanguageOptions}
               disabled={isBusy}
-            >
-              <SelectTrigger id="translate-source-language" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {sourceLanguageOptions.map((language) => (
-                  <SelectItem key={language.value} value={language.value}>
-                    {language.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              searchPlaceholder="Tìm ngôn ngữ nguồn..."
+              emptyMessage="Không tìm thấy ngôn ngữ nguồn"
+            />
             {sourceLanguage === AUTO_LANGUAGE && detectedSourceLanguage ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Badge variant="outline">
@@ -693,22 +705,15 @@ export default function TranslateFile() {
             <Label htmlFor="translate-target-language">
               {"D\u1ecbch sang"}
             </Label>
-            <Select
+            <Combobox
+              id="translate-target-language"
               value={targetLanguage}
               onValueChange={handleTargetLanguageChange}
+              options={TRANSLATION_LANGUAGES}
               disabled={isBusy}
-            >
-              <SelectTrigger id="translate-target-language" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TRANSLATION_LANGUAGES.map((language) => (
-                  <SelectItem key={language.value} value={language.value}>
-                    {language.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              searchPlaceholder="Tìm ngôn ngữ dịch..."
+              emptyMessage="Không tìm thấy ngôn ngữ dịch"
+            />
           </div>
         </div>
 
@@ -847,7 +852,7 @@ export default function TranslateFile() {
                     }}
                     disabled={isBusy}
                     placeholder="Nội dung trích xuất sẽ hiển thị tại đây."
-                    className="h-94 min-h-94 max-h-94 resize-none overflow-y-auto p-4 text-sm leading-6"
+                    className="multilingual-content h-94 min-h-94 max-h-94 resize-none overflow-y-auto p-4 text-sm leading-6"
                   />
                   {visibleIsLoadingAudio || processingStep === "extracting" ? (
                     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md bg-gray-50 p-6 text-center text-sm text-muted-foreground">
@@ -982,7 +987,7 @@ export default function TranslateFile() {
                     </Button>
                   </div>
                 ) : translatedText ? (
-                  <div className="h-94 min-h-94 max-h-94 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-6">
+                  <div className="multilingual-content h-94 min-h-94 max-h-94 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-6">
                     {translatedText}
                   </div>
                 ) : (

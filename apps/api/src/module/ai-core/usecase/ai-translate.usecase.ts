@@ -19,6 +19,8 @@ type TranslationCoreRequest = Record<string, string>;
 type TranslationCoreResponse = Record<string, unknown>;
 export type TranslationProgressCallback = (progress: number) => void;
 
+const MIN_CHARACTER_CHUNK_LIMIT = 1200;
+
 @Injectable()
 export class AiTranslateUseCase {
   private readonly logger = new Logger(AiTranslateUseCase.name);
@@ -64,13 +66,17 @@ export class AiTranslateUseCase {
   ) {
     const targetLang = dto.target_lang ?? 'en';
     const chunkWordLimit = this.config.translation.chunkWordLimit;
-    const chunks = this.splitTextByWordLimit(dto.source_text, chunkWordLimit);
+    const chunks = this.splitTextForTranslation(
+      dto.source_text,
+      chunkWordLimit,
+    );
+    const baseRequest = this.getTranslationCoreRequest(dto, targetLang);
 
     if (chunks.length <= 1) {
       onProgress?.(10);
       const response = await this.postToTranslationCore(path, {
+        ...baseRequest,
         source_text: dto.source_text,
-        target_lang: targetLang,
       });
       onProgress?.(100);
 
@@ -88,8 +94,8 @@ export class AiTranslateUseCase {
 
       responses.push(
         await this.postToTranslationCore(path, {
+          ...baseRequest,
           source_text: chunk,
-          target_lang: targetLang,
         }),
       );
 
@@ -175,6 +181,35 @@ export class AiTranslateUseCase {
     return typeof translatedText === 'string' ? translatedText.trim() : '';
   }
 
+  private getTranslationCoreRequest(
+    dto: TranslateRequestDto,
+    targetLang: string,
+  ): TranslationCoreRequest {
+    return {
+      target_lang: targetLang,
+      ...(dto.source_lang ? { source_lang: dto.source_lang } : {}),
+    };
+  }
+
+  private splitTextForTranslation(text: string, wordLimit: number): string[] {
+    const wordChunks = this.splitTextByWordLimit(text, wordLimit);
+
+    if (wordChunks.length > 1) {
+      return wordChunks;
+    }
+
+    const characterLimit = Math.max(
+      Math.floor(wordLimit * 2),
+      MIN_CHARACTER_CHUNK_LIMIT,
+    );
+
+    if (text.trim().length <= characterLimit) {
+      return wordChunks;
+    }
+
+    return this.splitTextByCharacterLimit(text, characterLimit);
+  }
+
   private splitTextByWordLimit(text: string, wordLimit: number): string[] {
     const chunks: string[] = [];
     const wordMatches = text.matchAll(/\S+/g);
@@ -211,5 +246,46 @@ export class AiTranslateUseCase {
     }
 
     return chunks;
+  }
+
+  private splitTextByCharacterLimit(text: string, characterLimit: number) {
+    const chunks: string[] = [];
+    let remainingText = text.trim();
+
+    while (remainingText.length > characterLimit) {
+      const splitIndex = this.findCharacterChunkSplitIndex(
+        remainingText,
+        characterLimit,
+      );
+      const chunk = remainingText.slice(0, splitIndex).trim();
+
+      if (chunk) {
+        chunks.push(chunk);
+      }
+
+      remainingText = remainingText.slice(splitIndex).trim();
+    }
+
+    if (remainingText) {
+      chunks.push(remainingText);
+    }
+
+    return chunks;
+  }
+
+  private findCharacterChunkSplitIndex(text: string, characterLimit: number) {
+    const searchWindow = text.slice(0, characterLimit);
+    const punctuationMatch = searchWindow.match(
+      /[。．.!！?？\n]\s*[^。．.!！?？\n]*$/u,
+    );
+
+    if (
+      punctuationMatch?.index &&
+      punctuationMatch.index > characterLimit / 2
+    ) {
+      return punctuationMatch.index + punctuationMatch[0].length;
+    }
+
+    return characterLimit;
   }
 }

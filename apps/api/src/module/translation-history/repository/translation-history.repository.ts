@@ -12,6 +12,37 @@ export class TranslationHistoryRepository {
     return this.prisma.translation_records.create({ data });
   }
 
+  async findById(id: string) {
+    return this.prisma.translation_records.findUnique({
+      where: { id },
+      include: {
+        operator: {
+          select: { id: true, email: true, username: true, role: true },
+        },
+      },
+    });
+  }
+
+  async updateEditedTranslation(
+    id: string,
+    translatedText: string,
+    editorId: string,
+  ) {
+    return this.prisma.translation_records.update({
+      where: { id },
+      data: {
+        edited_translated_text: translatedText,
+        edited_by: editorId,
+        edited_at: new Date(),
+      },
+      include: {
+        operator: {
+          select: { id: true, email: true, username: true, role: true },
+        },
+      },
+    });
+  }
+
   async findAll(filter: TranslationHistoryFilterDto) {
     const page = filter.page ?? 1;
     const pageSize = filter.page_size ?? 10;

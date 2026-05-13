@@ -20,6 +20,11 @@ export class FindTranslationHistoryUseCase implements BaseUseCase<
         id: item.id,
         source_text: item.source_text,
         translated_text: item.translated_text,
+        edited_translated_text: item.edited_translated_text,
+        effective_translated_text:
+          item.edited_translated_text ?? item.translated_text,
+        edited_at: item.edited_at,
+        edited_by: item.edited_by,
         source_lang: item.source_lang,
         target_lang: item.target_lang,
         source_file_type: item.source_file_type,

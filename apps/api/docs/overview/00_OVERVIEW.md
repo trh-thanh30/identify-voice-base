@@ -98,6 +98,7 @@ Backend đóng vai trò **orchestration layer** trung tâm:
 | `GET`   | `/api/v1/sessions/:id`                   | Sessions            | UC05     | ✅       | Chi tiết kết quả AI một phiên             |
 | `GET`   | `/api/v1/sessions/:id/speakers/:l/audio` | Sessions            | UC05     | ✅       | Phát audio từng speaker (on-demand)       |
 | `GET`   | `/api/v1/translate/history`              | Translation History | —        | ✅ Admin | Lịch sử và thống kê bản dịch              |
+| `PATCH` | `/api/v1/translate/history/:id`          | Translation History | —        | ✅       | Chỉnh sửa bản dịch đã lưu                 |
 | `GET`   | `/api/v1/jobs/:id`                       | UpdateVoice         | UC04     | ✅       | Theo dõi tiến độ job                      |
 
 ---

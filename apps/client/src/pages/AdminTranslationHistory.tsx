@@ -1,11 +1,14 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
+  Check,
   Copy,
   Download,
   Languages,
   Loader2,
+  Pencil,
   SearchX,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -19,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Pagination,
   PaginationContent,
@@ -60,12 +64,28 @@ import {
   getLanguageLabel,
 } from "@/feature/translate/utils/translation-history.utils";
 import { useScrollOffset } from "@/hooks/use-scroll-offset";
+import { useAuthStore } from "@/store/auth.store";
 import { formatError } from "@/utils";
 
 const ALL_LANGUAGES = "all";
+const EDIT_TRANSLATION_PERMISSION = "translate.history.update";
 const PAGINATION_SCROLL_OFFSET_Y = 128;
 
+function getDisplayTranslatedText(
+  record: Pick<
+    TranslationHistoryRecord,
+    "translated_text" | "edited_translated_text" | "effective_translated_text"
+  >,
+) {
+  return (
+    record.effective_translated_text ??
+    record.edited_translated_text ??
+    record.translated_text
+  );
+}
+
 export default function AdminTranslationHistory() {
+  const currentUser = useAuthStore((state) => state.user);
   const [page, setPage] = useState(1);
   const [paginationScrollKey, setPaginationScrollKey] = useState(0);
   const [pageSize, setPageSize] = useState<10 | 25 | 50>(10);
@@ -79,6 +99,9 @@ export default function AdminTranslationHistory() {
   } | null>(null);
   const [selectedRecord, setSelectedRecord] =
     useState<TranslationHistoryRecord | null>(null);
+  const [draftTranslatedText, setDraftTranslatedText] = useState("");
+  const [isEditingTranslation, setIsEditingTranslation] = useState(false);
+  const [isSavingTranslation, setIsSavingTranslation] = useState(false);
 
   const historyQuery = useQuery({
     queryKey: QUERY_KEYS.translate.history.list({
@@ -111,6 +134,11 @@ export default function AdminTranslationHistory() {
   const lastRecordIndex = Math.min(page * pageSize, totalRecords);
   const canGoPrevious = page > 1;
   const canGoNext = page < totalPages;
+  const canEditTranslation =
+    currentUser?.permissions.includes(EDIT_TRANSLATION_PERMISSION) ?? false;
+  const selectedTranslatedText = selectedRecord
+    ? getDisplayTranslatedText(selectedRecord)
+    : "";
   const { targetRef: listTopRef, scrollToOffset } =
     useScrollOffset<HTMLDivElement>({
       behavior: "auto",
@@ -182,6 +210,73 @@ export default function AdminTranslationHistory() {
       toast.error(formatError(error));
     } finally {
       setExportingRecord(null);
+    }
+  };
+
+  const openRecordDetail = (record: TranslationHistoryRecord) => {
+    setSelectedRecord(record);
+    setDraftTranslatedText(getDisplayTranslatedText(record));
+    setIsEditingTranslation(false);
+  };
+
+  const closeRecordDetail = () => {
+    setSelectedRecord(null);
+    setDraftTranslatedText("");
+    setIsEditingTranslation(false);
+  };
+
+  const startEditingTranslation = () => {
+    if (!selectedRecord) return;
+
+    setDraftTranslatedText(getDisplayTranslatedText(selectedRecord));
+    setIsEditingTranslation(true);
+  };
+
+  const cancelEditingTranslation = () => {
+    if (!selectedRecord || isSavingTranslation) return;
+
+    setDraftTranslatedText(getDisplayTranslatedText(selectedRecord));
+    setIsEditingTranslation(false);
+  };
+
+  const saveEditedTranslation = async () => {
+    if (!selectedRecord || isSavingTranslation) return;
+
+    const nextTranslatedText = draftTranslatedText.trim();
+    const currentTranslatedText = selectedTranslatedText.trim();
+
+    if (!nextTranslatedText) {
+      toast.error("Nội dung bản dịch không được để trống.");
+      return;
+    }
+
+    if (nextTranslatedText === currentTranslatedText) {
+      setDraftTranslatedText(selectedTranslatedText);
+      setIsEditingTranslation(false);
+      return;
+    }
+
+    setIsSavingTranslation(true);
+
+    try {
+      const updatedRecord = await translateApi.updateTranslationHistory(
+        selectedRecord.id,
+        {
+          translatedText: nextTranslatedText,
+        },
+      );
+
+      setSelectedRecord((current) =>
+        current?.id === updatedRecord.id ? updatedRecord : current,
+      );
+      setDraftTranslatedText(getDisplayTranslatedText(updatedRecord));
+      setIsEditingTranslation(false);
+      toast.success("Đã cập nhật bản dịch.");
+      await historyQuery.refetch();
+    } catch (error) {
+      toast.error(formatError(error));
+    } finally {
+      setIsSavingTranslation(false);
     }
   };
 
@@ -371,15 +466,22 @@ export default function AdminTranslationHistory() {
                 <TableRow
                   key={item.id}
                   className="cursor-pointer"
-                  onClick={() => setSelectedRecord(item)}
+                  onClick={() => openRecordDetail(item)}
                 >
                   <TableCell className="whitespace-nowrap align-top text-sm">
                     {formatDateTime(item.created_at)}
                   </TableCell>
                   <TableCell className="align-top text-sm">
-                    <span className="block truncate">
-                      {item.operator.username || item.operator.email || "-"}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className="block truncate">
+                        {item.operator.username || item.operator.email || "-"}
+                      </span>
+                      {item.edited_at ? (
+                        <Badge variant="secondary" className="w-fit">
+                          Đã chỉnh sửa
+                        </Badge>
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell className="align-top">
                     <Badge variant="outline">
@@ -416,7 +518,7 @@ export default function AdminTranslationHistory() {
                               event.stopPropagation();
                               void downloadTranslation(
                                 item.id,
-                                item.translated_text,
+                                getDisplayTranslatedText(item),
                                 item.mode,
                                 format,
                               );
@@ -493,7 +595,7 @@ export default function AdminTranslationHistory() {
       <Dialog
         open={Boolean(selectedRecord)}
         onOpenChange={(open) => {
-          if (!open) setSelectedRecord(null);
+          if (!open && !isSavingTranslation) closeRecordDetail();
         }}
       >
         <DialogContent className="max-w-7xl">
@@ -528,17 +630,62 @@ export default function AdminTranslationHistory() {
               </div>
               <div className="overflow-hidden rounded-md border bg-white">
                 <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b px-4 py-2">
-                  <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                    Bản dịch
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                      Bản dịch
+                    </p>
+                    {selectedRecord.edited_at ? (
+                      <Badge variant="secondary">Đã chỉnh sửa</Badge>
+                    ) : null}
+                  </div>
                   <div className="flex flex-wrap justify-end gap-2">
+                    {canEditTranslation ? (
+                      isEditingTranslation ? (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={isSavingTranslation}
+                            onClick={cancelEditingTranslation}
+                          >
+                            <X className="size-4" />
+                            Hủy
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isSavingTranslation}
+                            onClick={() => void saveEditedTranslation()}
+                          >
+                            {isSavingTranslation ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <Check className="size-4" />
+                            )}
+                            Lưu
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={startEditingTranslation}
+                        >
+                          <Pencil className="size-4" />
+                          Chỉnh sửa
+                        </Button>
+                      )
+                    ) : null}
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
+                      disabled={isEditingTranslation || isSavingTranslation}
                       onClick={() =>
                         void copyText(
-                          selectedRecord.translated_text,
+                          selectedTranslatedText,
                           "Đã sao chép bản dịch.",
                         )
                       }
@@ -557,11 +704,15 @@ export default function AdminTranslationHistory() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={Boolean(exportingRecord)}
+                          disabled={
+                            Boolean(exportingRecord) ||
+                            isEditingTranslation ||
+                            isSavingTranslation
+                          }
                           onClick={() =>
                             void downloadTranslation(
                               selectedRecord.id,
-                              selectedRecord.translated_text,
+                              selectedTranslatedText,
                               selectedRecord.mode,
                               format,
                             )
@@ -578,9 +729,24 @@ export default function AdminTranslationHistory() {
                     })}
                   </div>
                 </div>
-                <pre className="max-h-[55vh] min-h-72 overflow-auto whitespace-pre-wrap bg-slate-50 p-4 text-sm text-slate-700">
-                  {selectedRecord.translated_text}
-                </pre>
+                {isEditingTranslation ? (
+                  <div className="max-h-[55vh] min-h-72 overflow-auto bg-slate-50 p-4">
+                    <Textarea
+                      autoFocus
+                      rows={18}
+                      value={draftTranslatedText}
+                      disabled={isSavingTranslation}
+                      onChange={(event) =>
+                        setDraftTranslatedText(event.target.value)
+                      }
+                      className="min-h-full resize-none border-slate-200 bg-white text-sm text-slate-700 shadow-none"
+                    />
+                  </div>
+                ) : (
+                  <pre className="max-h-[55vh] min-h-72 overflow-auto whitespace-pre-wrap bg-slate-50 p-4 text-sm text-slate-700">
+                    {selectedTranslatedText}
+                  </pre>
+                )}
               </div>
             </div>
           ) : null}

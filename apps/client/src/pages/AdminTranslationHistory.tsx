@@ -2,14 +2,18 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   Check,
+  ChevronDown,
   Copy,
   Download,
+  Eye,
+  EyeOff,
   Languages,
   Loader2,
   Pencil,
   SearchX,
   X,
 } from "lucide-react";
+import type { ComponentProps } from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -22,7 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Pagination,
   PaginationContent,
@@ -32,6 +35,11 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -47,11 +55,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { QUERY_KEYS } from "@/constants";
 import type { TranslateExportFormat } from "@/feature/translate/api/translate.api";
 import { translateApi } from "@/feature/translate/api/translate.api";
 import { TranslationHistoryDatePicker } from "@/feature/translate/components/translation-history-date-picker";
 import { TRANSLATION_LANGUAGES } from "@/feature/translate/constants/translate.constants";
+import { useDownloadFormatDropdown } from "@/feature/translate/hooks/use-download-format-dropdown";
 import type {
   TranslationHistoryMode,
   TranslationHistoryRecord,
@@ -64,12 +79,15 @@ import {
   getLanguageLabel,
 } from "@/feature/translate/utils/translation-history.utils";
 import { useScrollOffset } from "@/hooks/use-scroll-offset";
+import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
 import { formatError } from "@/utils";
 
 const ALL_LANGUAGES = "all";
 const EDIT_TRANSLATION_PERMISSION = "translate.history.update";
 const PAGINATION_SCROLL_OFFSET_Y = 128;
+const EFFECTIVE_TRANSLATION_VIEW = "effective";
+const ORIGINAL_TRANSLATION_VIEW = "original";
 
 function getDisplayTranslatedText(
   record: Pick<
@@ -81,6 +99,69 @@ function getDisplayTranslatedText(
     record.effective_translated_text ??
     record.edited_translated_text ??
     record.translated_text
+  );
+}
+
+interface TranslationDownloadDropdownProps {
+  align?: ComponentProps<typeof PopoverContent>["align"];
+  className?: string;
+  disabled?: boolean;
+  exportingFormat?: TranslateExportFormat | null;
+  label?: string;
+  onDownload: (format: TranslateExportFormat) => void | Promise<void>;
+}
+
+function TranslationDownloadDropdown({
+  align = "end",
+  className,
+  disabled = false,
+  exportingFormat = null,
+  label = "Tải xuống",
+  onDownload,
+}: TranslationDownloadDropdownProps) {
+  const isBusy = Boolean(exportingFormat);
+  const dropdown = useDownloadFormatDropdown({
+    disabled: disabled || isBusy,
+    onDownload,
+  });
+
+  return (
+    <Popover open={dropdown.open} onOpenChange={dropdown.setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn("min-w-30 justify-between", className)}
+          disabled={disabled || isBusy}
+        >
+          {isBusy ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
+          <span>
+            {isBusy ? `Đang tải ${exportingFormat?.toUpperCase()}` : label}
+          </span>
+          <ChevronDown className="size-4 text-slate-500" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align={align} className="w-44 p-1">
+        <div className="flex flex-col">
+          {dropdown.formats.map((format) => (
+            <button
+              key={format}
+              type="button"
+              className="flex h-9 items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:bg-slate-100 focus:outline-none"
+              onClick={() => void dropdown.selectFormat(format)}
+            >
+              <Download className="size-4 text-slate-500" />
+              {format.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -102,6 +183,9 @@ export default function AdminTranslationHistory() {
   const [draftTranslatedText, setDraftTranslatedText] = useState("");
   const [isEditingTranslation, setIsEditingTranslation] = useState(false);
   const [isSavingTranslation, setIsSavingTranslation] = useState(false);
+  const [translationView, setTranslationView] = useState<
+    typeof EFFECTIVE_TRANSLATION_VIEW | typeof ORIGINAL_TRANSLATION_VIEW
+  >(EFFECTIVE_TRANSLATION_VIEW);
 
   const historyQuery = useQuery({
     queryKey: QUERY_KEYS.translate.history.list({
@@ -139,6 +223,15 @@ export default function AdminTranslationHistory() {
   const selectedTranslatedText = selectedRecord
     ? getDisplayTranslatedText(selectedRecord)
     : "";
+  const canViewOriginalTranslation = Boolean(
+    selectedRecord?.edited_at &&
+    selectedRecord.translated_text.trim() &&
+    selectedRecord.translated_text !== selectedTranslatedText,
+  );
+  const detailTranslatedText =
+    selectedRecord && translationView === ORIGINAL_TRANSLATION_VIEW
+      ? selectedRecord.translated_text
+      : selectedTranslatedText;
   const { targetRef: listTopRef, scrollToOffset } =
     useScrollOffset<HTMLDivElement>({
       behavior: "auto",
@@ -217,18 +310,21 @@ export default function AdminTranslationHistory() {
     setSelectedRecord(record);
     setDraftTranslatedText(getDisplayTranslatedText(record));
     setIsEditingTranslation(false);
+    setTranslationView(EFFECTIVE_TRANSLATION_VIEW);
   };
 
   const closeRecordDetail = () => {
     setSelectedRecord(null);
     setDraftTranslatedText("");
     setIsEditingTranslation(false);
+    setTranslationView(EFFECTIVE_TRANSLATION_VIEW);
   };
 
   const startEditingTranslation = () => {
     if (!selectedRecord) return;
 
     setDraftTranslatedText(getDisplayTranslatedText(selectedRecord));
+    setTranslationView(EFFECTIVE_TRANSLATION_VIEW);
     setIsEditingTranslation(true);
   };
 
@@ -270,6 +366,7 @@ export default function AdminTranslationHistory() {
         current?.id === updatedRecord.id ? updatedRecord : current,
       );
       setDraftTranslatedText(getDisplayTranslatedText(updatedRecord));
+      setTranslationView(EFFECTIVE_TRANSLATION_VIEW);
       setIsEditingTranslation(false);
       toast.success("Đã cập nhật bản dịch.");
       await historyQuery.refetch();
@@ -450,12 +547,13 @@ export default function AdminTranslationHistory() {
             </p>
           </div>
         ) : (
-          <Table className="min-w-230 table-fixed">
+          <Table className="min-w-250 table-fixed">
             <TableHeader className="sticky top-0 z-10 bg-slate-50">
               <TableRow>
                 <TableHead className="w-37.5">Thời gian</TableHead>
                 <TableHead className="w-35">Người dịch</TableHead>
                 <TableHead className="w-22.5">Luồng</TableHead>
+                <TableHead className="w-30">Trạng thái</TableHead>
                 <TableHead className="w-40">Ngôn ngữ</TableHead>
                 <TableHead className="w-24">Loại tệp</TableHead>
                 <TableHead className="w-50 text-right">Thao tác</TableHead>
@@ -472,21 +570,23 @@ export default function AdminTranslationHistory() {
                     {formatDateTime(item.created_at)}
                   </TableCell>
                   <TableCell className="align-top text-sm">
-                    <div className="flex flex-col gap-1">
-                      <span className="block truncate">
-                        {item.operator.username || item.operator.email || "-"}
-                      </span>
-                      {item.edited_at ? (
-                        <Badge variant="secondary" className="w-fit">
-                          Đã chỉnh sửa
-                        </Badge>
-                      ) : null}
-                    </div>
+                    <span className="block truncate">
+                      {item.operator.username || item.operator.email || "-"}
+                    </span>
                   </TableCell>
                   <TableCell className="align-top">
                     <Badge variant="outline">
                       {item.mode === "SUMMARIZE" ? "Tóm tắt" : "Dịch"}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="align-top">
+                    {item.edited_at ? (
+                      <Badge variant="secondary">Đã chỉnh sửa</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-slate-500">
+                        Bản gốc
+                      </Badge>
+                    )}
                   </TableCell>
 
                   <TableCell className="align-top text-sm">
@@ -501,38 +601,26 @@ export default function AdminTranslationHistory() {
                     </Badge>
                   </TableCell>
                   <TableCell className="align-top">
-                    <div className="flex justify-end gap-2">
-                      {(["docx", "pdf"] as const).map((format) => {
-                        const isExporting =
-                          exportingRecord?.id === item.id &&
-                          exportingRecord.format === format;
-
-                        return (
-                          <Button
-                            key={format}
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={Boolean(exportingRecord)}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void downloadTranslation(
-                                item.id,
-                                getDisplayTranslatedText(item),
-                                item.mode,
-                                format,
-                              );
-                            }}
-                          >
-                            {isExporting ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <Download className="size-4" />
-                            )}
-                            {format.toUpperCase()}
-                          </Button>
-                        );
-                      })}
+                    <div
+                      className="flex justify-end"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <TranslationDownloadDropdown
+                        disabled={Boolean(exportingRecord)}
+                        exportingFormat={
+                          exportingRecord?.id === item.id
+                            ? exportingRecord.format
+                            : null
+                        }
+                        onDownload={(format) =>
+                          downloadTranslation(
+                            item.id,
+                            getDisplayTranslatedText(item),
+                            item.mode,
+                            format,
+                          )
+                        }
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -598,44 +686,69 @@ export default function AdminTranslationHistory() {
           if (!open && !isSavingTranslation) closeRecordDetail();
         }}
       >
-        <DialogContent className="max-w-7xl">
+        <DialogContent className="max-h-[94vh] max-w-[min(98vw,1680px)] gap-4 overflow-hidden p-6">
           <DialogHeader>
             <DialogTitle>Chi tiết bản dịch</DialogTitle>
           </DialogHeader>
           {selectedRecord ? (
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="overflow-hidden rounded-md border bg-white">
-                <div className="flex min-h-12 items-center justify-between gap-3 border-b px-4 py-2">
-                  <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                    Văn bản gốc
-                  </p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      void copyText(
-                        selectedRecord.source_text,
-                        "Đã sao chép văn bản gốc.",
-                      )
-                    }
-                  >
-                    <Copy className="size-4" />
-                    Sao chép
-                  </Button>
+            <div className="grid min-h-0 gap-4 lg:grid-cols-2">
+              <div className="flex min-h-0 flex-col overflow-hidden rounded-md border bg-white">
+                <div className="flex min-h-14 items-center justify-between gap-3 border-b px-4 py-3">
+                  <div className="min-w-0 flex items-center gap-2">
+                    <p className="text-base font-semibold text-slate-950">
+                      Văn bản nguồn
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {selectedRecord.source_text.length.toLocaleString(
+                        "vi-VN",
+                      )}{" "}
+                      ký tự
+                    </p>
+                  </div>
                 </div>
-                <pre className="max-h-[55vh] min-h-72 overflow-auto whitespace-pre-wrap bg-slate-50 p-4 text-sm text-slate-700">
-                  {selectedRecord.source_text}
-                </pre>
+                <div className="relative h-[68vh] min-h-[520px]">
+                  <pre className="multilingual-content h-full overflow-auto whitespace-pre-wrap bg-slate-50 p-4 pb-14 text-sm text-slate-700">
+                    {selectedRecord.source_text}
+                  </pre>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        className="absolute right-4 bottom-4 bg-white/95 shadow-sm backdrop-blur hover:bg-white"
+                        aria-label="Sao chép văn bản nguồn"
+                        onClick={() =>
+                          void copyText(
+                            selectedRecord.source_text,
+                            "Đã sao chép văn bản gốc.",
+                          )
+                        }
+                      >
+                        <Copy className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left" sideOffset={8}>
+                      Sao chép văn bản nguồn
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
-              <div className="overflow-hidden rounded-md border bg-white">
-                <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+              <div className="flex min-h-0 flex-col overflow-hidden rounded-md border bg-white">
+                <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <p className="text-base font-semibold text-slate-950">
                       Bản dịch
                     </p>
+                    <span className="text-xs text-slate-500">
+                      {detailTranslatedText.length.toLocaleString("vi-VN")} ký
+                      tự
+                    </span>
                     {selectedRecord.edited_at ? (
                       <Badge variant="secondary">Đã chỉnh sửa</Badge>
+                    ) : null}
+                    {translationView === ORIGINAL_TRANSLATION_VIEW ? (
+                      <Badge variant="outline">Bản gốc</Badge>
                     ) : null}
                   </div>
                   <div className="flex flex-wrap justify-end gap-2">
@@ -678,59 +791,30 @@ export default function AdminTranslationHistory() {
                         </Button>
                       )
                     ) : null}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={isEditingTranslation || isSavingTranslation}
-                      onClick={() =>
-                        void copyText(
-                          selectedTranslatedText,
-                          "Đã sao chép bản dịch.",
+                    <TranslationDownloadDropdown
+                      disabled={
+                        Boolean(exportingRecord) ||
+                        isEditingTranslation ||
+                        isSavingTranslation
+                      }
+                      exportingFormat={
+                        exportingRecord?.id === selectedRecord.id
+                          ? exportingRecord.format
+                          : null
+                      }
+                      onDownload={(format) =>
+                        downloadTranslation(
+                          selectedRecord.id,
+                          detailTranslatedText,
+                          selectedRecord.mode,
+                          format,
                         )
                       }
-                    >
-                      <Copy className="size-4" />
-                      Sao chép
-                    </Button>
-                    {(["docx", "pdf"] as const).map((format) => {
-                      const isExporting =
-                        exportingRecord?.id === selectedRecord.id &&
-                        exportingRecord.format === format;
-
-                      return (
-                        <Button
-                          key={format}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={
-                            Boolean(exportingRecord) ||
-                            isEditingTranslation ||
-                            isSavingTranslation
-                          }
-                          onClick={() =>
-                            void downloadTranslation(
-                              selectedRecord.id,
-                              selectedTranslatedText,
-                              selectedRecord.mode,
-                              format,
-                            )
-                          }
-                        >
-                          {isExporting ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : (
-                            <Download className="size-4" />
-                          )}
-                          {format.toUpperCase()}
-                        </Button>
-                      );
-                    })}
+                    />
                   </div>
                 </div>
                 {isEditingTranslation ? (
-                  <div className="max-h-[55vh] min-h-72 overflow-auto bg-slate-50 p-4">
+                  <div className="h-[68vh] min-h-[520px] overflow-auto bg-slate-50 p-4">
                     <Textarea
                       autoFocus
                       rows={18}
@@ -739,13 +823,76 @@ export default function AdminTranslationHistory() {
                       onChange={(event) =>
                         setDraftTranslatedText(event.target.value)
                       }
-                      className="min-h-full resize-none border-slate-200 bg-white text-sm text-slate-700 shadow-none"
+                      className="multilingual-content min-h-full resize-none border-slate-200 bg-white text-sm text-slate-700 shadow-none"
                     />
                   </div>
                 ) : (
-                  <pre className="max-h-[55vh] min-h-72 overflow-auto whitespace-pre-wrap bg-slate-50 p-4 text-sm text-slate-700">
-                    {selectedTranslatedText}
-                  </pre>
+                  <div className="relative h-[68vh] min-h-[520px]">
+                    <pre className="multilingual-content h-full overflow-auto whitespace-pre-wrap bg-slate-50 p-4 pb-14 text-sm text-slate-700">
+                      {detailTranslatedText}
+                    </pre>
+                    <div className="absolute right-4 bottom-4 flex gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon-sm"
+                            className="bg-white/95 shadow-sm backdrop-blur hover:bg-white"
+                            disabled={isSavingTranslation}
+                            aria-label="Sao chép bản dịch"
+                            onClick={() =>
+                              void copyText(
+                                detailTranslatedText,
+                                "Đã sao chép bản dịch.",
+                              )
+                            }
+                          >
+                            <Copy className="size-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={8}>
+                          Sao chép bản dịch
+                        </TooltipContent>
+                      </Tooltip>
+                      {canViewOriginalTranslation ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon-sm"
+                              className="bg-white/95 shadow-sm backdrop-blur hover:bg-white"
+                              disabled={isSavingTranslation}
+                              aria-label={
+                                translationView === ORIGINAL_TRANSLATION_VIEW
+                                  ? "Quay lại bản đã chỉnh sửa"
+                                  : "Xem bản dịch gốc"
+                              }
+                              onClick={() =>
+                                setTranslationView((current) =>
+                                  current === ORIGINAL_TRANSLATION_VIEW
+                                    ? EFFECTIVE_TRANSLATION_VIEW
+                                    : ORIGINAL_TRANSLATION_VIEW,
+                                )
+                              }
+                            >
+                              {translationView === ORIGINAL_TRANSLATION_VIEW ? (
+                                <EyeOff className="size-4" />
+                              ) : (
+                                <Eye className="size-4" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={8}>
+                            {translationView === ORIGINAL_TRANSLATION_VIEW
+                              ? "Quay lại bản đã chỉnh sửa"
+                              : "Xem bản dịch gốc"}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : null}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

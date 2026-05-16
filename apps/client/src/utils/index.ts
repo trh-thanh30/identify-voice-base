@@ -2,12 +2,40 @@
  * Formats an error to a human-readable string.
  */
 export function formatError(error: unknown): string {
-  if (typeof error === "string") return error;
-  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return normalizeErrorMessage(error);
+  if (error instanceof Error) return normalizeErrorMessage(error.message);
   if (typeof error === "object" && error !== null && "message" in error) {
-    return String((error as { message: unknown }).message);
+    return normalizeErrorMessage(
+      String((error as { message: unknown }).message),
+    );
   }
   return "An unexpected error occurred";
+}
+
+function normalizeErrorMessage(message: string): string {
+  const trimmedMessage = message.trim();
+
+  if (!trimmedMessage) {
+    return "An unexpected error occurred";
+  }
+
+  if (isHtmlErrorMessage(trimmedMessage)) {
+    if (isNgrokOfflineError(trimmedMessage)) {
+      return "AI Core hiện không phản hồi hoặc endpoint đang offline. Vui lòng kiểm tra lại dịch vụ AI Core/ngrok rồi thử lại.";
+    }
+
+    return "Dịch vụ xử lý đang trả về phản hồi không hợp lệ. Vui lòng kiểm tra lại server AI Core rồi thử lại.";
+  }
+
+  return trimmedMessage;
+}
+
+function isHtmlErrorMessage(message: string): boolean {
+  return /<!doctype html|<html[\s>]/i.test(message);
+}
+
+function isNgrokOfflineError(message: string): boolean {
+  return /ngrok|ERR_NGROK_\d+|endpoint .* is offline/i.test(message);
 }
 
 /**

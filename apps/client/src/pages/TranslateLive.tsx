@@ -1,7 +1,5 @@
 import {
   Check,
-  Copy,
-  Download,
   Languages,
   LoaderCircle,
   RotateCcw,
@@ -19,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { translateApi } from "@/feature/translate/api/translate.api";
+import { CopyFeedbackButton } from "@/feature/translate/components/copy-feedback-button";
+import { TranslateDownloadDropdown } from "@/feature/translate/components/translate-download-dropdown";
 import {
   AUTO_LANGUAGE,
   DEFAULT_TARGET_LANGUAGE,
@@ -310,13 +310,15 @@ export default function TranslateLive() {
   };
 
   const copyText = async (text: string, successMessage: string) => {
-    if (!text.trim()) return;
+    if (!text.trim()) return false;
 
     try {
       await navigator.clipboard.writeText(text);
       toast.success(successMessage);
+      return true;
     } catch {
       toast.error("Không thể sao chép nội dung.");
+      return false;
     }
   };
 
@@ -438,18 +440,6 @@ export default function TranslateLive() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={!hasSourceText}
-                onClick={() =>
-                  void copyText(sourceText, "Đã sao chép văn bản nguồn.")
-                }
-              >
-                <Copy className="mr-2 size-4" />
-                Sao chép
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
                 disabled={!hasSourceText || isTranslating}
                 onClick={() => {
                   translateRequestIdRef.current += 1;
@@ -466,17 +456,27 @@ export default function TranslateLive() {
             </div>
           </CardHeader>
           <CardContent className="flex min-h-0 flex-1 flex-col gap-2">
-            <Textarea
-              value={sourceText}
-              onChange={(event) => {
-                updateSourceLanguage(AUTO_LANGUAGE);
-                setSourceText(event.target.value);
-                resetTranslatedResult();
-                updateTranslateProgress(0);
-              }}
-              placeholder="Nhập văn bản cần dịch tại đây."
-              className="multilingual-content min-h-0 flex-1 resize-none p-4 text-sm leading-6"
-            />
+            <div className="relative min-h-0 flex-1">
+              <Textarea
+                value={sourceText}
+                onChange={(event) => {
+                  updateSourceLanguage(AUTO_LANGUAGE);
+                  setSourceText(event.target.value);
+                  resetTranslatedResult();
+                  updateTranslateProgress(0);
+                }}
+                placeholder="Nhập văn bản cần dịch tại đây."
+                className="multilingual-content h-full min-h-0 resize-none p-4 pb-14 text-sm leading-6"
+              />
+              <CopyFeedbackButton
+                className="absolute right-4 bottom-4"
+                disabled={!hasSourceText}
+                label="Sao chép văn bản nguồn"
+                onCopy={() =>
+                  copyText(sourceText, "Đã sao chép văn bản nguồn.")
+                }
+              />
+            </div>
             <div className="flex justify-end gap-2">
               {isTranslating ? (
                 <Button
@@ -528,59 +528,17 @@ export default function TranslateLive() {
                   Lưu
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                disabled={
-                  !hasTranslatedText ||
-                  hasPendingTranslationEdit ||
-                  isSavingEditedTranslation
-                }
-                onClick={() =>
-                  void copyText(translatedText, "Đã sao chép bản dịch.")
-                }
-              >
-                <Copy className="mr-2 size-4" />
-                Sao chép kết quả
-              </Button>
 
-              <Button
-                type="button"
-                variant="outline"
+              <TranslateDownloadDropdown
                 disabled={
                   !hasTranslatedText ||
                   Boolean(exportingFormat) ||
                   hasPendingTranslationEdit ||
                   isSavingEditedTranslation
                 }
-                onClick={() => void downloadTranslatedFile("docx")}
-              >
-                {exportingFormat === "docx" ? (
-                  <LoaderCircle className="mr-2 size-4 animate-spin" />
-                ) : (
-                  <Download className="mr-2 size-4" />
-                )}
-                DOCX
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                disabled={
-                  !hasTranslatedText ||
-                  Boolean(exportingFormat) ||
-                  hasPendingTranslationEdit ||
-                  isSavingEditedTranslation
-                }
-                onClick={() => void downloadTranslatedFile("pdf")}
-              >
-                {exportingFormat === "pdf" ? (
-                  <LoaderCircle className="mr-2 size-4 animate-spin" />
-                ) : (
-                  <Download className="mr-2 size-4" />
-                )}
-                PDF
-              </Button>
+                exportingFormat={exportingFormat}
+                onDownload={downloadTranslatedFile}
+              />
             </div>
           </CardHeader>
           <CardContent className="min-h-0 flex-1">
@@ -613,15 +571,39 @@ export default function TranslateLive() {
                 </Button>
               </div>
             ) : translatedText ? (
-              <Textarea
-                value={translatedText}
-                readOnly={!canSaveTranslationEdit || isSavingEditedTranslation}
-                onChange={(event) => setTranslatedText(event.target.value)}
-                className="multilingual-content h-full min-h-0 resize-none overflow-auto rounded-md border bg-muted/30 p-4 text-sm leading-6"
-              />
+              <div className="relative h-full min-h-0">
+                <Textarea
+                  value={translatedText}
+                  readOnly={
+                    !canSaveTranslationEdit || isSavingEditedTranslation
+                  }
+                  onChange={(event) => setTranslatedText(event.target.value)}
+                  className="multilingual-content h-full min-h-0 resize-none overflow-auto rounded-md border bg-muted/30 p-4 pb-14 text-sm leading-6"
+                />
+                <CopyFeedbackButton
+                  className="absolute right-4 bottom-4"
+                  disabled={
+                    !hasTranslatedText ||
+                    hasPendingTranslationEdit ||
+                    isSavingEditedTranslation
+                  }
+                  label="Sao chép bản dịch"
+                  onCopy={() =>
+                    copyText(translatedText, "Đã sao chép bản dịch.")
+                  }
+                />
+              </div>
             ) : (
-              <div className="flex h-full min-h-0 items-center justify-center rounded-md border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+              <div className="relative flex h-full min-h-0 items-center justify-center rounded-md border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
                 Bản dịch sẽ hiển thị ở đây.
+                <CopyFeedbackButton
+                  className="absolute right-4 bottom-4"
+                  disabled
+                  label="Sao chép bản dịch"
+                  onCopy={() =>
+                    copyText(translatedText, "Đã sao chép bản dịch.")
+                  }
+                />
               </div>
             )}
           </CardContent>

@@ -1,7 +1,5 @@
 import {
   Check,
-  Copy,
-  Download,
   FileText,
   Languages,
   LoaderCircle,
@@ -19,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
+import { CopyFeedbackButton } from "@/feature/translate/components/copy-feedback-button";
 import {
   Select,
   SelectContent,
@@ -30,6 +29,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { translateApi } from "@/feature/translate/api/translate.api";
 import { TranslateAudioPreview } from "@/feature/translate/components/translate-audio-preview";
+import { TranslateDownloadDropdown } from "@/feature/translate/components/translate-download-dropdown";
 import { TranslateFileDropzone } from "@/feature/translate/components/translate-file-dropzone";
 import {
   AUTO_LANGUAGE,
@@ -44,12 +44,12 @@ import type {
   SpeechToTextResponse,
   TranslateMode,
 } from "@/feature/translate/types/translate.types";
-import { useAuthStore } from "@/store/auth.store";
 import {
   getLanguageLabel,
   getOcrText,
   getTranscriptText,
 } from "@/feature/translate/utils/translate-file.utils";
+import { useAuthStore } from "@/store/auth.store";
 import {
   animateProgressTo,
   formatError,
@@ -673,13 +673,15 @@ export default function TranslateFile() {
   };
 
   const copyText = async (text: string, successMessage: string) => {
-    if (!text.trim()) return;
+    if (!text.trim()) return false;
 
     try {
       await navigator.clipboard.writeText(text);
       toast.success(successMessage);
+      return true;
     } catch {
       toast.error("Không thể sao chép nội dung.");
+      return false;
     }
   };
 
@@ -884,18 +886,6 @@ export default function TranslateFile() {
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={!hasSourceText}
-                    onClick={() =>
-                      void copyText(sourceText, "Đã sao chép văn bản nguồn.")
-                    }
-                  >
-                    <Copy className="mr-2 size-4" />
-                    Sao chép
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
                     disabled={!hasSourceText || isBusy}
                     onClick={() => {
                       setSourceText("");
@@ -920,7 +910,15 @@ export default function TranslateFile() {
                     }}
                     disabled={isBusy}
                     placeholder="Nội dung trích xuất sẽ hiển thị tại đây."
-                    className="multilingual-content h-94 min-h-94 max-h-94 resize-none overflow-y-auto p-4 text-sm leading-6"
+                    className="multilingual-content h-94 min-h-94 max-h-94 resize-none overflow-y-auto p-4 pb-14 text-sm leading-6"
+                  />
+                  <CopyFeedbackButton
+                    className="absolute right-4 bottom-4"
+                    disabled={!hasSourceText || isBusy}
+                    label="Sao chép văn bản nguồn"
+                    onCopy={() =>
+                      copyText(sourceText, "Đã sao chép văn bản nguồn.")
+                    }
                   />
                   {visibleIsLoadingAudio || processingStep === "extracting" ? (
                     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-md bg-gray-50 p-6 text-center text-sm text-muted-foreground">
@@ -999,59 +997,17 @@ export default function TranslateFile() {
                       Lưu
                     </Button>
                   ) : null}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={
-                      !hasTranslatedText ||
-                      hasPendingTranslationEdit ||
-                      isSavingEditedTranslation
-                    }
-                    onClick={() =>
-                      void copyText(translatedText, "Đã sao chép bản dịch.")
-                    }
-                  >
-                    <Copy className="mr-2 size-4" />
-                    Sao chép kết quả
-                  </Button>
 
-                  <Button
-                    type="button"
-                    variant="outline"
+                  <TranslateDownloadDropdown
                     disabled={
                       !hasTranslatedText ||
                       Boolean(exportingFormat) ||
                       hasPendingTranslationEdit ||
                       isSavingEditedTranslation
                     }
-                    onClick={() => void downloadTranslatedFile("docx")}
-                  >
-                    {exportingFormat === "docx" ? (
-                      <LoaderCircle className="mr-2 size-4 animate-spin" />
-                    ) : (
-                      <Download className="mr-2 size-4" />
-                    )}
-                    DOCX
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={
-                      !hasTranslatedText ||
-                      Boolean(exportingFormat) ||
-                      hasPendingTranslationEdit ||
-                      isSavingEditedTranslation
-                    }
-                    onClick={() => void downloadTranslatedFile("pdf")}
-                  >
-                    {exportingFormat === "pdf" ? (
-                      <LoaderCircle className="mr-2 size-4 animate-spin" />
-                    ) : (
-                      <Download className="mr-2 size-4" />
-                    )}
-                    PDF
-                  </Button>
+                    exportingFormat={exportingFormat}
+                    onDownload={downloadTranslatedFile}
+                  />
                 </div>
               </CardHeader>
               <CardContent>
@@ -1080,19 +1036,43 @@ export default function TranslateFile() {
                     </Button>
                   </div>
                 ) : translatedText ? (
-                  <Textarea
-                    value={translatedText}
-                    readOnly={
-                      !canSaveTranslationEdit ||
-                      isBusy ||
-                      isSavingEditedTranslation
-                    }
-                    onChange={(event) => setTranslatedText(event.target.value)}
-                    className="multilingual-content h-94 min-h-94 max-h-94 resize-none overflow-y-auto rounded-md border bg-muted/30 p-4 text-sm leading-6"
-                  />
+                  <div className="relative">
+                    <Textarea
+                      value={translatedText}
+                      readOnly={
+                        !canSaveTranslationEdit ||
+                        isBusy ||
+                        isSavingEditedTranslation
+                      }
+                      onChange={(event) =>
+                        setTranslatedText(event.target.value)
+                      }
+                      className="multilingual-content h-94 min-h-94 max-h-94 resize-none overflow-y-auto rounded-md border bg-muted/30 p-4 pb-14 text-sm leading-6"
+                    />
+                    <CopyFeedbackButton
+                      className="absolute right-4 bottom-4"
+                      disabled={
+                        !hasTranslatedText ||
+                        hasPendingTranslationEdit ||
+                        isSavingEditedTranslation
+                      }
+                      label="Sao chép bản dịch"
+                      onCopy={() =>
+                        copyText(translatedText, "Đã sao chép bản dịch.")
+                      }
+                    />
+                  </div>
                 ) : (
-                  <div className="flex h-94 min-h-94 max-h-94 items-center justify-center rounded-md border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+                  <div className="relative flex h-94 min-h-94 max-h-94 items-center justify-center rounded-md border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
                     Bản dịch sẽ hiển thị ở đây.
+                    <CopyFeedbackButton
+                      className="absolute right-4 bottom-4"
+                      disabled
+                      label="Sao chép bản dịch"
+                      onCopy={() =>
+                        copyText(translatedText, "Đã sao chép bản dịch.")
+                      }
+                    />
                   </div>
                 )}
               </CardContent>

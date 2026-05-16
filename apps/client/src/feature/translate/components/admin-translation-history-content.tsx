@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import type { ComponentProps } from "react";
+import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -309,6 +310,21 @@ function PreparingContent() {
   );
 }
 
+function useCopiedFeedback(activeKey: string) {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const showCopied = () => {
+    setCopiedKey(activeKey);
+    window.setTimeout(() => {
+      setCopiedKey((currentKey) =>
+        currentKey === activeKey ? null : currentKey,
+      );
+    }, 1200);
+  };
+
+  return { isCopied: copiedKey === activeKey, showCopied };
+}
+
 interface TranslationHistoryTableProps {
   exportingRecord: { id: string; format: TranslateExportFormat } | null;
   isError: boolean;
@@ -510,7 +526,7 @@ export function TranslationHistoryPagination({
 
 interface SourceTextPanelProps {
   isContentLoading: boolean;
-  onCopy: (text: string, successMessage: string) => void;
+  onCopy: (text: string, successMessage: string) => boolean | Promise<boolean>;
   record: TranslationHistoryRecord;
 }
 
@@ -519,6 +535,8 @@ export function SourceTextPanel({
   onCopy,
   record,
 }: SourceTextPanelProps) {
+  const { isCopied, showCopied } = useCopiedFeedback(record.id);
+
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-md border bg-white">
       <div className="flex min-h-14 items-center justify-between gap-3 border-b px-4 py-3">
@@ -547,11 +565,19 @@ export function SourceTextPanel({
                   size="icon-sm"
                   className="absolute right-4 bottom-4 bg-white/95 shadow-sm backdrop-blur hover:bg-white"
                   aria-label="Sao chép văn bản nguồn"
-                  onClick={() =>
-                    onCopy(record.source_text, "Đã sao chép văn bản gốc.")
-                  }
+                  onClick={async () => {
+                    const copied = await onCopy(
+                      record.source_text,
+                      "Đã sao chép văn bản gốc.",
+                    );
+                    if (copied) showCopied();
+                  }}
                 >
-                  <Copy className="size-4" />
+                  {isCopied ? (
+                    <Check className="size-4 animate-in zoom-in-50 text-emerald-600 duration-200" />
+                  ) : (
+                    <Copy className="size-4 animate-in fade-in-0 duration-150" />
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={8}>
@@ -577,7 +603,7 @@ interface TranslatedTextPanelProps {
   isViewTooltipOpen: boolean;
   isViewTooltipSuppressed: boolean;
   onCancelEditing: () => void;
-  onCopy: (text: string, successMessage: string) => void;
+  onCopy: (text: string, successMessage: string) => boolean | Promise<boolean>;
   onDownload: (format: TranslateExportFormat) => void;
   onDraftChange: (value: string) => void;
   onSaveEditing: () => void;
@@ -612,6 +638,8 @@ export function TranslatedTextPanel({
   record,
   translationView,
 }: TranslatedTextPanelProps) {
+  const { isCopied, showCopied } = useCopiedFeedback(record.id);
+
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-md border bg-white">
       <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
@@ -708,11 +736,19 @@ export function TranslatedTextPanel({
                   className="bg-white/95 shadow-sm backdrop-blur hover:bg-white"
                   disabled={isSavingTranslation}
                   aria-label="Sao chép bản dịch"
-                  onClick={() =>
-                    onCopy(detailTranslatedText, "Đã sao chép bản dịch.")
-                  }
+                  onClick={async () => {
+                    const copied = await onCopy(
+                      detailTranslatedText,
+                      "Đã sao chép bản dịch.",
+                    );
+                    if (copied) showCopied();
+                  }}
                 >
-                  <Copy className="size-4" />
+                  {isCopied ? (
+                    <Check className="size-4 animate-in zoom-in-50 text-emerald-600 duration-200" />
+                  ) : (
+                    <Copy className="size-4 animate-in fade-in-0 duration-150" />
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={8}>

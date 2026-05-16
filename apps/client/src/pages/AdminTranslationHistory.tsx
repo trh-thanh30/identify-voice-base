@@ -196,13 +196,15 @@ export default function AdminTranslationHistory() {
   };
 
   const copyText = async (text: string, successMessage: string) => {
-    if (!text.trim()) return;
+    if (!text.trim()) return false;
 
     try {
       await navigator.clipboard.writeText(text);
       toast.success(successMessage);
+      return true;
     } catch {
       toast.error("Không thể sao chép nội dung.");
+      return false;
     }
   };
 
@@ -429,7 +431,7 @@ export default function AdminTranslationHistory() {
             <div className="grid min-h-0 gap-4 lg:grid-cols-2">
               <SourceTextPanel
                 isContentLoading={isRecordDetailContentLoading}
-                onCopy={(text, message) => void copyText(text, message)}
+                onCopy={copyText}
                 record={selectedRecord}
               />
               <TranslatedTextPanel
@@ -448,7 +450,7 @@ export default function AdminTranslationHistory() {
                 isViewTooltipOpen={isTranslationViewTooltipOpen}
                 isViewTooltipSuppressed={isTranslationViewTooltipSuppressed}
                 onCancelEditing={cancelEditingTranslation}
-                onCopy={(text, message) => void copyText(text, message)}
+                onCopy={copyText}
                 onDownload={(format) =>
                   downloadTranslation(
                     selectedRecord.id,

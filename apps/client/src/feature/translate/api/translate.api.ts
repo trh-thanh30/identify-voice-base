@@ -10,6 +10,7 @@ import type {
   TranslateJobResponse,
   TranslateResponse,
   TranslationHistoryFilter,
+  TranslationHistoryRecord,
   TranslationHistoryResponse,
 } from "../types/translate.types";
 
@@ -39,6 +40,10 @@ export interface TranslateExportRequest {
   format: TranslateExportFormat;
   filename?: string;
   title?: string;
+}
+
+export interface UpdateTranslationHistoryRequest {
+  translatedText: string;
 }
 
 export interface DetectLanguageRequest {
@@ -277,6 +282,19 @@ export const translateApi = {
       ApiResponse<TranslationHistoryResponse>
     >("/translate/history", {
       params,
+    });
+
+    return unwrapApiResponse(response.data);
+  },
+
+  async updateTranslationHistory(
+    recordId: string,
+    payload: UpdateTranslationHistoryRequest,
+  ): Promise<TranslationHistoryRecord> {
+    const response = await axiosInstance.patch<
+      ApiResponse<TranslationHistoryRecord>
+    >(`/translate/history/${recordId}`, {
+      translated_text: payload.translatedText,
     });
 
     return unwrapApiResponse(response.data);

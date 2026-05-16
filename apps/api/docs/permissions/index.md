@@ -242,7 +242,79 @@ Frontend tương ứng:
 - màn hình nhận dạng 1 người
 - màn hình nhận dạng nhiều người
 
-### 4.10 `sessions.read`
+### 4.10 `ocr.run`
+
+Ý nghĩa:
+
+- chạy OCR tài liệu qua AI Core
+
+Được dùng cho:
+
+- `POST /api/v1/ai-core/ocr`
+- `POST /api/v1/ai-core/ocr/jobs`
+- `GET /api/v1/ai-core/ocr/jobs/:jobId`
+
+Frontend tương ứng:
+
+- bước trích xuất văn bản từ ảnh/PDF/DOCX/TXT trong màn dịch file
+
+### 4.11 `s2t.run`
+
+Ý nghĩa:
+
+- chuyển giọng nói thành văn bản qua AI Core
+
+Được dùng cho:
+
+- `POST /api/v1/ai-core/speech-to-text`
+- `POST /api/v1/ai-core/speech-to-text/jobs`
+- `GET /api/v1/ai-core/speech-to-text/jobs/:jobId`
+
+Frontend tương ứng:
+
+- bước nhận dạng audio/video trong màn dịch file
+
+### 4.12 `translate.run`
+
+Ý nghĩa:
+
+- chạy dịch văn bản, dịch/tóm tắt, phát hiện ngôn ngữ và export bản dịch
+
+Được dùng cho:
+
+- `POST /api/v1/ai-core/translate`
+- `POST /api/v1/ai-core/translate/jobs`
+- `GET /api/v1/ai-core/translate/jobs/:jobId`
+- `POST /api/v1/ai-core/translate-summarize`
+- `POST /api/v1/ai-core/translate-summarize/jobs`
+- `POST /api/v1/ai-core/detect-language`
+- `POST /api/v1/ai-core/translate/export`
+
+Frontend tương ứng:
+
+- màn dịch trực tiếp
+- màn dịch file
+
+### 4.13 `translate.history.update`
+
+Ý nghĩa:
+
+- chỉnh sửa bản dịch đã lưu trong lịch sử
+
+Được dùng cho:
+
+- `PATCH /api/v1/translate/history/:id`
+
+Ràng buộc bổ sung:
+
+- `ADMIN` được sửa mọi bản dịch
+- `OPERATOR` chỉ sửa được bản dịch do chính mình tạo và cần được Admin cấp permission này
+
+Frontend tương ứng:
+
+- nút/chế độ chỉnh sửa bản dịch trong chi tiết lịch sử dịch
+
+### 4.14 `sessions.read`
 
 Ý nghĩa:
 
@@ -278,6 +350,10 @@ Admin có full permission:
 - `voices.update`
 - `voices.delete`
 - `identify.run`
+- `ocr.run`
+- `s2t.run`
+- `translate.run`
+- `translate.history.update`
 - `sessions.read`
 
 ### 5.2 OPERATOR
@@ -379,6 +455,8 @@ Ví dụ:
 - voice read
 - enroll
 - identify
+- translate
+- translate history update
 - sessions
 
 Nguyên tắc nên dùng:
@@ -415,13 +493,34 @@ Nguyên tắc nên dùng:
 
 - `POST /api/v1/identify` -> `identify.run`
 
-### 9.5 Sessions
+### 9.5 AI Core dịch và xử lý tài liệu
+
+- `POST /api/v1/ai-core/ocr` -> `ocr.run`
+- `POST /api/v1/ai-core/ocr/jobs` -> `ocr.run`
+- `GET /api/v1/ai-core/ocr/jobs/:jobId` -> `ocr.run`
+- `POST /api/v1/ai-core/speech-to-text` -> `s2t.run`
+- `POST /api/v1/ai-core/speech-to-text/jobs` -> `s2t.run`
+- `GET /api/v1/ai-core/speech-to-text/jobs/:jobId` -> `s2t.run`
+- `POST /api/v1/ai-core/translate` -> `translate.run`
+- `POST /api/v1/ai-core/translate/jobs` -> `translate.run`
+- `GET /api/v1/ai-core/translate/jobs/:jobId` -> `translate.run`
+- `POST /api/v1/ai-core/translate-summarize` -> `translate.run`
+- `POST /api/v1/ai-core/translate-summarize/jobs` -> `translate.run`
+- `POST /api/v1/ai-core/detect-language` -> `translate.run`
+- `POST /api/v1/ai-core/translate/export` -> `translate.run`
+
+### 9.6 Lịch sử dịch
+
+- `GET /api/v1/translate/history` -> `ADMIN`
+- `PATCH /api/v1/translate/history/:id` -> `translate.history.update`
+
+### 9.7 Sessions
 
 - `GET /api/v1/sessions` -> `sessions.read`
 - `GET /api/v1/sessions/:id` -> `sessions.read`
 - `GET /api/v1/sessions/:id/speakers/:label/audio` -> `sessions.read`
 
-### 9.6 Upload audio theo purpose
+### 9.8 Upload audio theo purpose
 
 Upload audio không dùng một permission cố định cho mọi request.
 

@@ -99,12 +99,21 @@ export class AiTranslateJobService {
             );
 
       await progressUpdate;
-      await this.recordTranslation(dto, result, mode, userId);
+      const historyRecord = await this.recordTranslation(
+        dto,
+        result,
+        mode,
+        userId,
+      );
+      const resultWithHistory = this.attachHistoryRecordId(
+        result,
+        historyRecord,
+      );
 
       await this.patchJob(jobId, {
         status: 'completed',
         progress: 100,
-        result,
+        result: resultWithHistory,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -150,16 +159,16 @@ export class AiTranslateJobService {
     userId?: string,
   ) {
     if (!userId || !result || typeof result !== 'object') {
-      return;
+      return null;
     }
 
     const translatedText = (result as Record<string, unknown>).translated_text;
 
     if (typeof translatedText !== 'string') {
-      return;
+      return null;
     }
 
-    await this.translationHistoryService.recordTranslation({
+    return this.translationHistoryService.recordTranslation({
       userId,
       sourceText: dto.source_text,
       translatedText,
@@ -168,5 +177,26 @@ export class AiTranslateJobService {
       sourceFileType: dto.source_file_type,
       mode,
     });
+  }
+
+  private attachHistoryRecordId(result: unknown, historyRecord: unknown) {
+    if (!result || typeof result !== 'object') {
+      return result;
+    }
+
+    if (!historyRecord || typeof historyRecord !== 'object') {
+      return result;
+    }
+
+    const historyId = (historyRecord as Record<string, unknown>).id;
+
+    if (typeof historyId !== 'string') {
+      return result;
+    }
+
+    return {
+      ...(result as Record<string, unknown>),
+      history_record_id: historyId,
+    };
   }
 }

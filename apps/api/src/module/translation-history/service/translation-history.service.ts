@@ -5,12 +5,17 @@ import {
   RecordTranslationUseCase,
 } from '../use-cases/record-translation.usecase';
 import { FindTranslationHistoryUseCase } from '../use-cases/find-translation-history.usecase';
+import {
+  UpdateTranslationHistoryInput,
+  UpdateTranslationHistoryUseCase,
+} from '../use-cases/update-translation-history.usecase';
 
 @Injectable()
 export class TranslationHistoryService {
   constructor(
     private readonly recordTranslationUseCase: RecordTranslationUseCase,
     private readonly findTranslationHistoryUseCase: FindTranslationHistoryUseCase,
+    private readonly updateTranslationHistoryUseCase: UpdateTranslationHistoryUseCase,
   ) {}
 
   async recordTranslation(input: RecordTranslationInput) {
@@ -19,5 +24,9 @@ export class TranslationHistoryService {
 
   async findAll(filter: TranslationHistoryFilterDto) {
     return this.findTranslationHistoryUseCase.execute(filter);
+  }
+
+  async update(input: UpdateTranslationHistoryInput) {
+    return this.updateTranslationHistoryUseCase.execute(input);
   }
 }

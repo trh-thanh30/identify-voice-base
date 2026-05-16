@@ -1,4 +1,5 @@
 import {
+  Check,
   Copy,
   Download,
   FileText,
@@ -43,6 +44,7 @@ import type {
   SpeechToTextResponse,
   TranslateMode,
 } from "@/feature/translate/types/translate.types";
+import { useAuthStore } from "@/store/auth.store";
 import {
   getLanguageLabel,
   getOcrText,
@@ -55,6 +57,8 @@ import {
   wait,
   type ProcessingStep,
 } from "@/utils";
+
+const EDIT_TRANSLATION_PERMISSION = "translate.history.update";
 
 function getDetectedLanguageCode(
   detectedLanguages?: string | string[],
@@ -109,6 +113,7 @@ function getSourceLanguageOptionsByKind(kind?: SelectedTranslateFile["kind"]) {
 }
 
 export default function TranslateFile() {
+  const currentUser = useAuthStore((state) => state.user);
   const translateOptionsRef = useRef<HTMLDivElement | null>(null);
   const translateProgressRef = useRef(0);
   const translateRequestIdRef = useRef(0);
@@ -126,15 +131,20 @@ export default function TranslateFile() {
   const [mode, setMode] = useState<TranslateMode>("translate");
   const [sourceText, setSourceText] = useState("");
   const [translatedText, setTranslatedText] = useState("");
+  const [savedTranslatedText, setSavedTranslatedText] = useState("");
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [processingStep, setProcessingStep] = useState<ProcessingStep>("idle");
   const [translateProgress, setTranslateProgress] = useState(0);
   const [visibleIsLoadingAudio, setVisibleIsLoadingAudio] = useState(false);
+  const [isSavingEditedTranslation, setIsSavingEditedTranslation] =
+    useState(false);
 
   const isBusy = processingStep !== "idle";
   const isAudio = selectedFile?.kind === "audio";
   const hasFile = Boolean(selectedFile);
   const hasSourceText = sourceText.trim().length > 0;
+  const hasTranslatedText = translatedText.trim().length > 0;
   const outputTitle = mode === "summarize" ? "Bản dịch tóm tắt" : "Bản dịch";
   const exportFilename = useMemo(() => {
     const sourceName = selectedFile?.file.name.replace(/\.[^.]+$/, "").trim();
@@ -149,10 +159,22 @@ export default function TranslateFile() {
       title: outputTitle,
     },
   );
+  const canUpdateTranslationHistory =
+    currentUser?.permissions.includes(EDIT_TRANSLATION_PERMISSION) ?? false;
+  const canSaveTranslationEdit =
+    canUpdateTranslationHistory && Boolean(historyRecordId);
+  const hasPendingTranslationEdit =
+    canSaveTranslationEdit && translatedText !== savedTranslatedText;
 
   const updateTranslateProgress = useCallback((progress: number) => {
     translateProgressRef.current = progress;
     setTranslateProgress(progress);
+  }, []);
+
+  const resetTranslatedResult = useCallback(() => {
+    setTranslatedText("");
+    setSavedTranslatedText("");
+    setHistoryRecordId(null);
   }, []);
 
   const sourceLanguageOptions = useMemo(
@@ -206,7 +228,7 @@ export default function TranslateFile() {
 
   const resetResult = () => {
     setSourceText("");
-    setTranslatedText("");
+    resetTranslatedResult();
     setDetectedSourceLanguage(null);
     setErrorMessage(null);
     updateTranslateProgress(0);
@@ -224,6 +246,7 @@ export default function TranslateFile() {
     setMode("translate");
     setProcessingStep("idle");
     setVisibleIsLoadingAudio(false);
+    setIsSavingEditedTranslation(false);
     resetResult();
   };
 
@@ -237,7 +260,7 @@ export default function TranslateFile() {
 
     setProcessingStep("extracting");
     setErrorMessage(null);
-    setTranslatedText("");
+    resetTranslatedResult();
     updateTranslateProgress(0);
     const requestId = translateRequestIdRef.current + 1;
     translateRequestIdRef.current = requestId;
@@ -396,6 +419,7 @@ export default function TranslateFile() {
     setProcessingStep("translating");
     updateTranslateProgress(0);
     setErrorMessage(null);
+    resetTranslatedResult();
 
     const isCurrentRequest = () => requestId === translateRequestIdRef.current;
     const sourceLang =
@@ -434,7 +458,11 @@ export default function TranslateFile() {
             isCurrentRequest,
           );
           if (!isCurrentRequest()) return;
-          setTranslatedText(jobStatus.result?.translated_text ?? "");
+          const nextTranslatedText = jobStatus.result?.translated_text ?? "";
+
+          setTranslatedText(nextTranslatedText);
+          setSavedTranslatedText(nextTranslatedText);
+          setHistoryRecordId(jobStatus.result?.history_record_id ?? null);
           break;
         }
 
@@ -480,6 +508,46 @@ export default function TranslateFile() {
     setProcessingStep("idle");
     updateTranslateProgress(0);
     toast.info("Đã hủy tiến trình dịch.");
+  };
+
+  const saveEditedTranslation = async () => {
+    if (!historyRecordId || isSavingEditedTranslation || isBusy) return;
+
+    const nextTranslatedText = translatedText.trim();
+    const currentTranslatedText = savedTranslatedText.trim();
+
+    if (!nextTranslatedText) {
+      toast.error("Nội dung bản dịch không được để trống.");
+      return;
+    }
+
+    if (nextTranslatedText === currentTranslatedText) {
+      setTranslatedText(savedTranslatedText);
+      return;
+    }
+
+    setIsSavingEditedTranslation(true);
+
+    try {
+      const updatedRecord = await translateApi.updateTranslationHistory(
+        historyRecordId,
+        {
+          translatedText: nextTranslatedText,
+        },
+      );
+      const nextDisplayText =
+        updatedRecord.effective_translated_text ??
+        updatedRecord.edited_translated_text ??
+        updatedRecord.translated_text;
+
+      setTranslatedText(nextDisplayText);
+      setSavedTranslatedText(nextDisplayText);
+      toast.success("Đã lưu bản dịch chỉnh sửa.");
+    } catch (error) {
+      toast.error(formatError(error));
+    } finally {
+      setIsSavingEditedTranslation(false);
+    }
   };
 
   const handleSelectedFileChange = (nextFile: SelectedTranslateFile | null) => {
@@ -563,7 +631,7 @@ export default function TranslateFile() {
 
   const handleTargetLanguageChange = (value: string) => {
     setTargetLanguage(value);
-    setTranslatedText("");
+    resetTranslatedResult();
     updateTranslateProgress(0);
   };
 
@@ -831,7 +899,7 @@ export default function TranslateFile() {
                     disabled={!hasSourceText || isBusy}
                     onClick={() => {
                       setSourceText("");
-                      setTranslatedText("");
+                      resetTranslatedResult();
                       updateTranslateProgress(0);
                     }}
                   >
@@ -846,7 +914,7 @@ export default function TranslateFile() {
                     value={sourceText}
                     onChange={(event) => {
                       setSourceText(event.target.value);
-                      setTranslatedText("");
+                      resetTranslatedResult();
                       setDetectedSourceLanguage(null);
                       updateTranslateProgress(0);
                     }}
@@ -916,10 +984,29 @@ export default function TranslateFile() {
                 <CardTitle>{outputTitle}</CardTitle>
 
                 <div className="flex flex-wrap gap-2 sm:justify-end">
+                  {hasPendingTranslationEdit ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={isSavingEditedTranslation}
+                      onClick={() => void saveEditedTranslation()}
+                    >
+                      {isSavingEditedTranslation ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                      ) : (
+                        <Check className="size-4" />
+                      )}
+                      Lưu
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={!translatedText.trim()}
+                    disabled={
+                      !hasTranslatedText ||
+                      hasPendingTranslationEdit ||
+                      isSavingEditedTranslation
+                    }
                     onClick={() =>
                       void copyText(translatedText, "Đã sao chép bản dịch.")
                     }
@@ -932,7 +1019,10 @@ export default function TranslateFile() {
                     type="button"
                     variant="outline"
                     disabled={
-                      !translatedText.trim() || Boolean(exportingFormat)
+                      !hasTranslatedText ||
+                      Boolean(exportingFormat) ||
+                      hasPendingTranslationEdit ||
+                      isSavingEditedTranslation
                     }
                     onClick={() => void downloadTranslatedFile("docx")}
                   >
@@ -948,7 +1038,10 @@ export default function TranslateFile() {
                     type="button"
                     variant="outline"
                     disabled={
-                      !translatedText.trim() || Boolean(exportingFormat)
+                      !hasTranslatedText ||
+                      Boolean(exportingFormat) ||
+                      hasPendingTranslationEdit ||
+                      isSavingEditedTranslation
                     }
                     onClick={() => void downloadTranslatedFile("pdf")}
                   >
@@ -987,9 +1080,16 @@ export default function TranslateFile() {
                     </Button>
                   </div>
                 ) : translatedText ? (
-                  <div className="multilingual-content h-94 min-h-94 max-h-94 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-6">
-                    {translatedText}
-                  </div>
+                  <Textarea
+                    value={translatedText}
+                    readOnly={
+                      !canSaveTranslationEdit ||
+                      isBusy ||
+                      isSavingEditedTranslation
+                    }
+                    onChange={(event) => setTranslatedText(event.target.value)}
+                    className="multilingual-content h-94 min-h-94 max-h-94 resize-none overflow-y-auto rounded-md border bg-muted/30 p-4 text-sm leading-6"
+                  />
                 ) : (
                   <div className="flex h-94 min-h-94 max-h-94 items-center justify-center rounded-md border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
                     Bản dịch sẽ hiển thị ở đây.

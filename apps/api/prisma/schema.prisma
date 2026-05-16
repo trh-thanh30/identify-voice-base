@@ -93,11 +93,12 @@ model auth_accounts {
   status        UserStatus @default(ACTIVE)
 
   /// Các phiên nhận dạng được thực hiện bởi account này
-  identify_sessions   identify_sessions[]
+  identify_sessions          identify_sessions[]
   /// Các file audio được upload bởi account này
-  uploaded_files      audio_files[]
+  uploaded_files             audio_files[]
   /// Lịch sử dịch được thực hiện bởi account này
-  translation_records translation_records[]
+  translation_records        translation_records[] @relation("translation_record_operator")
+  edited_translation_records translation_records[] @relation("translation_record_editor")
 
   voice_update_logs voice_update_logs[]
 
@@ -297,23 +298,28 @@ model voice_update_logs {
   @@map("voice_update_logs")
 }
 
-/// Lịch sử dịch văn bản, chỉ admin được truy xuất để thống kê và đối soát
+/// Lịch sử dịch văn bản; admin xem toàn hệ thống, user xem bản ghi của chính mình
 model translation_records {
-  id              String          @id @default(uuid()) @db.Uuid
-  user_id         String          @db.Uuid
-  source_text     String
-  translated_text String
-  source_lang     String?
-  target_lang     String
-  source_file_type String?
-  mode            TranslationMode @default(TRANSLATE)
-  created_at      DateTime        @default(now())
+  id                     String          @id @default(uuid()) @db.Uuid
+  user_id                String          @db.Uuid
+  source_text            String
+  translated_text        String
+  edited_translated_text String?
+  edited_at              DateTime?
+  edited_by              String?         @db.Uuid
+  source_lang            String?
+  target_lang            String
+  source_file_type       String?
+  mode                   TranslationMode @default(TRANSLATE)
+  created_at             DateTime        @default(now())
 
-  operator auth_accounts @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  operator auth_accounts  @relation("translation_record_operator", fields: [user_id], references: [id], onDelete: Restrict)
+  editor   auth_accounts? @relation("translation_record_editor", fields: [edited_by], references: [id], onDelete: SetNull)
 
   @@index([user_id])
   @@index([created_at])
   @@index([target_lang])
   @@index([mode])
+  @@index([edited_by])
   @@map("translation_records")
 }

@@ -34,6 +34,7 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
   "ocr.run": "Chạy OCR tài liệu",
   "s2t.run": "Chạy chuyển giọng nói thành văn bản",
   "translate.run": "Chạy dịch văn bản",
+  "translate.history.update": "Chỉnh sửa lịch sử dịch",
   "sessions.read": "Xem lịch sử phiên nhận dạng",
 };
 

@@ -1,4 +1,5 @@
 import {
+  Check,
   Copy,
   Download,
   Languages,
@@ -26,6 +27,7 @@ import {
 } from "@/feature/translate/constants/translate.constants";
 import { useDownloadTranslatedFile } from "@/feature/translate/hooks/use-download-translated-file";
 import type { TranslateMode } from "@/feature/translate/types/translate.types";
+import { useAuthStore } from "@/store/auth.store";
 import {
   animateProgressTo,
   AUTO_DETECT_ERROR_MESSAGE,
@@ -34,6 +36,8 @@ import {
   TRANSLATE_JOB_POLL_INTERVAL_MS,
   wait,
 } from "@/utils";
+
+const EDIT_TRANSLATION_PERMISSION = "translate.history.update";
 
 function normalizeLiveDetectedLanguage(language: string) {
   const normalizedLanguage = language.trim();
@@ -55,6 +59,7 @@ function normalizeLiveDetectedLanguage(language: string) {
 }
 
 export default function TranslateLive() {
+  const currentUser = useAuthStore((state) => state.user);
   const translateRequestIdRef = useRef(0);
   const translateProgressRef = useRef(0);
   const sourceLanguageRef = useRef(AUTO_LANGUAGE);
@@ -63,13 +68,24 @@ export default function TranslateLive() {
   const [mode, setMode] = useState<TranslateMode>("translate");
   const [sourceText, setSourceText] = useState("");
   const [translatedText, setTranslatedText] = useState("");
+  const [savedTranslatedText, setSavedTranslatedText] = useState("");
+  const [historyRecordId, setHistoryRecordId] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isSavingEditedTranslation, setIsSavingEditedTranslation] =
+    useState(false);
   const [translateProgress, setTranslateProgress] = useState(0);
 
   const hasSourceText = sourceText.trim().length > 0;
+  const hasTranslatedText = translatedText.trim().length > 0;
   const outputTitle = mode === "summarize" ? "Bản dịch tóm tắt" : "Bản dịch";
   const exportFilename =
     mode === "summarize" ? "ban-dich-tom-tat-truc-tiep" : "ban-dich-truc-tiep";
+  const canUpdateTranslationHistory =
+    currentUser?.permissions.includes(EDIT_TRANSLATION_PERMISSION) ?? false;
+  const canSaveTranslationEdit =
+    canUpdateTranslationHistory && Boolean(historyRecordId);
+  const hasPendingTranslationEdit =
+    canSaveTranslationEdit && translatedText !== savedTranslatedText;
   const { downloadTranslatedFile, exportingFormat } = useDownloadTranslatedFile(
     {
       filename: exportFilename,
@@ -88,14 +104,33 @@ export default function TranslateLive() {
     setSourceLanguage(language);
   }, []);
 
+  const resetTranslatedResult = useCallback(() => {
+    setTranslatedText("");
+    setSavedTranslatedText("");
+    setHistoryRecordId(null);
+  }, []);
+
   const resetPage = () => {
     translateRequestIdRef.current += 1;
     updateSourceLanguage(AUTO_LANGUAGE);
     setTargetLanguage(DEFAULT_TARGET_LANGUAGE);
     setMode("translate");
     setSourceText("");
-    setTranslatedText("");
+    resetTranslatedResult();
     setIsTranslating(false);
+    setIsSavingEditedTranslation(false);
+    updateTranslateProgress(0);
+  };
+
+  const handleTargetLanguageChange = (value: string) => {
+    setTargetLanguage(value);
+    resetTranslatedResult();
+    updateTranslateProgress(0);
+  };
+
+  const handleModeChange = (value: string) => {
+    setMode(value as TranslateMode);
+    resetTranslatedResult();
     updateTranslateProgress(0);
   };
 
@@ -118,7 +153,7 @@ export default function TranslateLive() {
       translateRequestIdRef.current = requestId;
       setIsTranslating(true);
       updateTranslateProgress(0);
-      setTranslatedText("");
+      resetTranslatedResult();
 
       try {
         if (sourceLanguageRef.current === AUTO_LANGUAGE) {
@@ -191,7 +226,11 @@ export default function TranslateLive() {
               updateTranslateProgress,
               () => requestId === translateRequestIdRef.current,
             );
-            setTranslatedText(jobStatus.result?.translated_text ?? "");
+            const nextTranslatedText = jobStatus.result?.translated_text ?? "";
+
+            setTranslatedText(nextTranslatedText);
+            setSavedTranslatedText(nextTranslatedText);
+            setHistoryRecordId(jobStatus.result?.history_record_id ?? null);
             break;
           }
 
@@ -226,7 +265,7 @@ export default function TranslateLive() {
         }
       }
     },
-    [updateSourceLanguage, updateTranslateProgress],
+    [resetTranslatedResult, updateSourceLanguage, updateTranslateProgress],
   );
 
   useEffect(() => {
@@ -234,7 +273,7 @@ export default function TranslateLive() {
 
     if (!normalizedText) {
       translateRequestIdRef.current += 1;
-      setTranslatedText("");
+      resetTranslatedResult();
       setIsTranslating(false);
       updateTranslateProgress(0);
       return;
@@ -252,7 +291,14 @@ export default function TranslateLive() {
       window.clearTimeout(timeoutId);
       translateRequestIdRef.current += 1;
     };
-  }, [mode, runTranslate, sourceText, targetLanguage, updateTranslateProgress]);
+  }, [
+    mode,
+    resetTranslatedResult,
+    runTranslate,
+    sourceText,
+    targetLanguage,
+    updateTranslateProgress,
+  ]);
 
   const translateText = async () => {
     await runTranslate({
@@ -281,6 +327,46 @@ export default function TranslateLive() {
     setIsTranslating(false);
     updateTranslateProgress(0);
     toast.info("Đã hủy tiến trình dịch.");
+  };
+
+  const saveEditedTranslation = async () => {
+    if (!historyRecordId || isSavingEditedTranslation) return;
+
+    const nextTranslatedText = translatedText.trim();
+    const currentTranslatedText = savedTranslatedText.trim();
+
+    if (!nextTranslatedText) {
+      toast.error("Nội dung bản dịch không được để trống.");
+      return;
+    }
+
+    if (nextTranslatedText === currentTranslatedText) {
+      setTranslatedText(savedTranslatedText);
+      return;
+    }
+
+    setIsSavingEditedTranslation(true);
+
+    try {
+      const updatedRecord = await translateApi.updateTranslationHistory(
+        historyRecordId,
+        {
+          translatedText: nextTranslatedText,
+        },
+      );
+      const nextDisplayText =
+        updatedRecord.effective_translated_text ??
+        updatedRecord.edited_translated_text ??
+        updatedRecord.translated_text;
+
+      setTranslatedText(nextDisplayText);
+      setSavedTranslatedText(nextDisplayText);
+      toast.success("Đã lưu bản dịch chỉnh sửa.");
+    } catch (error) {
+      toast.error(formatError(error));
+    } finally {
+      setIsSavingEditedTranslation(false);
+    }
   };
 
   return (
@@ -314,7 +400,7 @@ export default function TranslateLive() {
               <Combobox
                 id="translate-live-target-language"
                 value={targetLanguage}
-                onValueChange={setTargetLanguage}
+                onValueChange={handleTargetLanguageChange}
                 options={TRANSLATION_LANGUAGES}
                 disabled={isTranslating}
                 searchPlaceholder="Tìm ngôn ngữ dịch..."
@@ -323,10 +409,7 @@ export default function TranslateLive() {
             </div>
           </div>
 
-          <Tabs
-            value={mode}
-            onValueChange={(value) => setMode(value as TranslateMode)}
-          >
+          <Tabs value={mode} onValueChange={handleModeChange}>
             <TabsList>
               <TabsTrigger value="translate" disabled={isTranslating}>
                 <Languages className="size-4" />
@@ -346,7 +429,7 @@ export default function TranslateLive() {
           <CardHeader className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2 ">
               Văn bản nguồn
-              <div className="shrink-0 text-right text-sm text-muted-foreground border-l border-l-gray-200 pl-2">
+              <div className="shrink-0 border-l border-l-gray-200 pl-2 text-right text-sm text-muted-foreground">
                 {sourceText.length} ký tự
               </div>
             </CardTitle>
@@ -372,7 +455,7 @@ export default function TranslateLive() {
                   translateRequestIdRef.current += 1;
                   updateSourceLanguage(AUTO_LANGUAGE);
                   setSourceText("");
-                  setTranslatedText("");
+                  resetTranslatedResult();
                   setIsTranslating(false);
                   updateTranslateProgress(0);
                 }}
@@ -388,7 +471,7 @@ export default function TranslateLive() {
               onChange={(event) => {
                 updateSourceLanguage(AUTO_LANGUAGE);
                 setSourceText(event.target.value);
-                setTranslatedText("");
+                resetTranslatedResult();
                 updateTranslateProgress(0);
               }}
               placeholder="Nhập văn bản cần dịch tại đây."
@@ -430,10 +513,29 @@ export default function TranslateLive() {
             <CardTitle>{outputTitle}</CardTitle>
 
             <div className="flex flex-wrap gap-2 sm:justify-end">
+              {hasPendingTranslationEdit ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isSavingEditedTranslation}
+                  onClick={() => void saveEditedTranslation()}
+                >
+                  {isSavingEditedTranslation ? (
+                    <LoaderCircle className="size-4 animate-spin" />
+                  ) : (
+                    <Check className="size-4" />
+                  )}
+                  Lưu
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="outline"
-                disabled={!translatedText.trim()}
+                disabled={
+                  !hasTranslatedText ||
+                  hasPendingTranslationEdit ||
+                  isSavingEditedTranslation
+                }
                 onClick={() =>
                   void copyText(translatedText, "Đã sao chép bản dịch.")
                 }
@@ -445,7 +547,12 @@ export default function TranslateLive() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={!translatedText.trim() || Boolean(exportingFormat)}
+                disabled={
+                  !hasTranslatedText ||
+                  Boolean(exportingFormat) ||
+                  hasPendingTranslationEdit ||
+                  isSavingEditedTranslation
+                }
                 onClick={() => void downloadTranslatedFile("docx")}
               >
                 {exportingFormat === "docx" ? (
@@ -459,7 +566,12 @@ export default function TranslateLive() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={!translatedText.trim() || Boolean(exportingFormat)}
+                disabled={
+                  !hasTranslatedText ||
+                  Boolean(exportingFormat) ||
+                  hasPendingTranslationEdit ||
+                  isSavingEditedTranslation
+                }
                 onClick={() => void downloadTranslatedFile("pdf")}
               >
                 {exportingFormat === "pdf" ? (
@@ -501,9 +613,12 @@ export default function TranslateLive() {
                 </Button>
               </div>
             ) : translatedText ? (
-              <div className="multilingual-content h-full min-h-0 overflow-auto whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-6">
-                {translatedText}
-              </div>
+              <Textarea
+                value={translatedText}
+                readOnly={!canSaveTranslationEdit || isSavingEditedTranslation}
+                onChange={(event) => setTranslatedText(event.target.value)}
+                className="multilingual-content h-full min-h-0 resize-none overflow-auto rounded-md border bg-muted/30 p-4 text-sm leading-6"
+              />
             ) : (
               <div className="flex h-full min-h-0 items-center justify-center rounded-md border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
                 Bản dịch sẽ hiển thị ở đây.

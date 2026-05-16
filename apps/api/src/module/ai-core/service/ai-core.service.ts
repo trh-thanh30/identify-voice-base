@@ -59,9 +59,14 @@ export class AiCoreService {
 
   async translate(dto: TranslateRequestDto, userId?: string) {
     const result = await this.translateUseCase.execute(dto);
-    await this.recordTranslation(dto, result, 'translate', userId);
+    const historyRecord = await this.recordTranslation(
+      dto,
+      result,
+      'translate',
+      userId,
+    );
 
-    return result;
+    return this.attachHistoryRecordId(result, historyRecord);
   }
 
   async detectLanguage(dto: DetectLanguageRequestDto) {
@@ -70,9 +75,14 @@ export class AiCoreService {
 
   async translateSummarize(dto: TranslateRequestDto, userId?: string) {
     const result = await this.translateUseCase.translateSummarize(dto);
-    await this.recordTranslation(dto, result, 'summarize', userId);
+    const historyRecord = await this.recordTranslation(
+      dto,
+      result,
+      'summarize',
+      userId,
+    );
 
-    return result;
+    return this.attachHistoryRecordId(result, historyRecord);
   }
 
   private async recordTranslation(
@@ -82,16 +92,16 @@ export class AiCoreService {
     userId?: string,
   ) {
     if (!userId || !result || typeof result !== 'object') {
-      return;
+      return null;
     }
 
     const translatedText = (result as Record<string, unknown>).translated_text;
 
     if (typeof translatedText !== 'string') {
-      return;
+      return null;
     }
 
-    await this.translationHistoryService.recordTranslation({
+    return this.translationHistoryService.recordTranslation({
       userId,
       sourceText: dto.source_text,
       translatedText,
@@ -100,5 +110,26 @@ export class AiCoreService {
       sourceFileType: dto.source_file_type,
       mode,
     });
+  }
+
+  private attachHistoryRecordId(result: unknown, historyRecord: unknown) {
+    if (!result || typeof result !== 'object') {
+      return result;
+    }
+
+    if (!historyRecord || typeof historyRecord !== 'object') {
+      return result;
+    }
+
+    const historyId = (historyRecord as Record<string, unknown>).id;
+
+    if (typeof historyId !== 'string') {
+      return result;
+    }
+
+    return {
+      ...(result as Record<string, unknown>),
+      history_record_id: historyId,
+    };
   }
 }

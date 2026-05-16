@@ -1,84 +1,91 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import {
-  BarChart3,
-  Copy,
-  Download,
-  Languages,
-  Loader2,
-  SearchX,
-} from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PageLayout } from "@/components/PageLayout";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { QUERY_KEYS } from "@/constants";
 import type { TranslateExportFormat } from "@/feature/translate/api/translate.api";
 import { translateApi } from "@/feature/translate/api/translate.api";
-import { TranslationHistoryDatePicker } from "@/feature/translate/components/translation-history-date-picker";
-import { TRANSLATION_LANGUAGES } from "@/feature/translate/constants/translate.constants";
+import {
+  ALL_TRANSLATION_LANGUAGES_FILTER,
+  EFFECTIVE_TRANSLATION_VIEW,
+  ORIGINAL_TRANSLATION_VIEW,
+  SourceTextPanel,
+  TranslatedTextPanel,
+  TranslationHistoryFilters,
+  TranslationHistoryPagination,
+  TranslationHistoryTable,
+  TranslationStatsCards,
+  type TranslationView,
+} from "@/feature/translate/components/admin-translation-history-content";
 import type {
   TranslationHistoryMode,
   TranslationHistoryRecord,
 } from "@/feature/translate/types/translate.types";
 import {
   buildPaginationItems,
-  formatDateTime,
   getExportTitle,
-  getFileTypeLabel,
-  getLanguageLabel,
 } from "@/feature/translate/utils/translation-history.utils";
 import { useScrollOffset } from "@/hooks/use-scroll-offset";
+import { useAuthStore } from "@/store/auth.store";
 import { formatError } from "@/utils";
 
-const ALL_LANGUAGES = "all";
+const EDIT_TRANSLATION_PERMISSION = "translate.history.update";
 const PAGINATION_SCROLL_OFFSET_Y = 128;
 
+function getDisplayTranslatedText(
+  record: Pick<
+    TranslationHistoryRecord,
+    "translated_text" | "edited_translated_text" | "effective_translated_text"
+  >,
+) {
+  return (
+    record.effective_translated_text ??
+    record.edited_translated_text ??
+    record.translated_text
+  );
+}
+
 export default function AdminTranslationHistory() {
+  const currentUser = useAuthStore((state) => state.user);
+  const recordDetailTitleRef = useRef<HTMLHeadingElement | null>(null);
   const [page, setPage] = useState(1);
   const [paginationScrollKey, setPaginationScrollKey] = useState(0);
   const [pageSize, setPageSize] = useState<10 | 25 | 50>(10);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [sourceLang, setSourceLang] = useState(ALL_LANGUAGES);
-  const [targetLang, setTargetLang] = useState(ALL_LANGUAGES);
+  const [sourceLang, setSourceLang] = useState(
+    ALL_TRANSLATION_LANGUAGES_FILTER,
+  );
+  const [targetLang, setTargetLang] = useState(
+    ALL_TRANSLATION_LANGUAGES_FILTER,
+  );
   const [exportingRecord, setExportingRecord] = useState<{
     id: string;
     format: TranslateExportFormat;
   } | null>(null);
   const [selectedRecord, setSelectedRecord] =
     useState<TranslationHistoryRecord | null>(null);
+  const [draftTranslatedText, setDraftTranslatedText] = useState("");
+  const [isEditingTranslation, setIsEditingTranslation] = useState(false);
+  const [isSavingTranslation, setIsSavingTranslation] = useState(false);
+  const [isRecordDetailContentReady, setIsRecordDetailContentReady] =
+    useState(false);
+  const [translationView, setTranslationView] = useState<TranslationView>(
+    EFFECTIVE_TRANSLATION_VIEW,
+  );
+  const [isTranslationViewTooltipOpen, setIsTranslationViewTooltipOpen] =
+    useState(false);
+  const [
+    isTranslationViewTooltipSuppressed,
+    setIsTranslationViewTooltipSuppressed,
+  ] = useState(false);
 
   const historyQuery = useQuery({
     queryKey: QUERY_KEYS.translate.history.list({
@@ -95,8 +102,14 @@ export default function AdminTranslationHistory() {
         page_size: pageSize,
         from_date: fromDate || undefined,
         to_date: toDate || undefined,
-        source_lang: sourceLang === ALL_LANGUAGES ? undefined : sourceLang,
-        target_lang: targetLang === ALL_LANGUAGES ? undefined : targetLang,
+        source_lang:
+          sourceLang === ALL_TRANSLATION_LANGUAGES_FILTER
+            ? undefined
+            : sourceLang,
+        target_lang:
+          targetLang === ALL_TRANSLATION_LANGUAGES_FILTER
+            ? undefined
+            : targetLang,
       }),
     placeholderData: keepPreviousData,
   });
@@ -111,6 +124,23 @@ export default function AdminTranslationHistory() {
   const lastRecordIndex = Math.min(page * pageSize, totalRecords);
   const canGoPrevious = page > 1;
   const canGoNext = page < totalPages;
+  const canEditTranslation =
+    currentUser?.permissions.includes(EDIT_TRANSLATION_PERMISSION) ?? false;
+  const selectedTranslatedText = selectedRecord
+    ? getDisplayTranslatedText(selectedRecord)
+    : "";
+  const canViewOriginalTranslation = Boolean(
+    selectedRecord?.edited_at &&
+    selectedRecord.translated_text.trim() &&
+    selectedRecord.translated_text !== selectedTranslatedText,
+  );
+  const detailTranslatedText =
+    selectedRecord && translationView === ORIGINAL_TRANSLATION_VIEW
+      ? selectedRecord.translated_text
+      : selectedTranslatedText;
+  const isRecordDetailContentLoading = Boolean(
+    selectedRecord && !isRecordDetailContentReady,
+  );
   const { targetRef: listTopRef, scrollToOffset } =
     useScrollOffset<HTMLDivElement>({
       behavior: "auto",
@@ -120,11 +150,38 @@ export default function AdminTranslationHistory() {
       scrollKey: paginationScrollKey,
     });
 
+  useEffect(() => {
+    if (!selectedRecord) return;
+
+    let isDisposed = false;
+    setIsRecordDetailContentReady(false);
+
+    const fontReadyPromise =
+      "fonts" in document
+        ? document.fonts.ready.catch(() => undefined)
+        : Promise.resolve();
+    const fallbackDelayPromise = new Promise((resolve) => {
+      window.setTimeout(resolve, 320);
+    });
+
+    void Promise.race([fontReadyPromise, fallbackDelayPromise]).then(() => {
+      window.requestAnimationFrame(() => {
+        if (!isDisposed) {
+          setIsRecordDetailContentReady(true);
+        }
+      });
+    });
+
+    return () => {
+      isDisposed = true;
+    };
+  }, [selectedRecord]);
+
   const resetFilters = () => {
     setFromDate("");
     setToDate("");
-    setSourceLang(ALL_LANGUAGES);
-    setTargetLang(ALL_LANGUAGES);
+    setSourceLang(ALL_TRANSLATION_LANGUAGES_FILTER);
+    setTargetLang(ALL_TRANSLATION_LANGUAGES_FILTER);
     setPageSize(10);
     setPage(1);
   };
@@ -185,6 +242,99 @@ export default function AdminTranslationHistory() {
     }
   };
 
+  const openRecordDetail = (record: TranslationHistoryRecord) => {
+    setIsRecordDetailContentReady(false);
+    setSelectedRecord(record);
+    setDraftTranslatedText(getDisplayTranslatedText(record));
+    setIsEditingTranslation(false);
+    setTranslationView(EFFECTIVE_TRANSLATION_VIEW);
+    setIsTranslationViewTooltipOpen(false);
+    setIsTranslationViewTooltipSuppressed(false);
+  };
+
+  const closeRecordDetail = () => {
+    setSelectedRecord(null);
+    setDraftTranslatedText("");
+    setIsEditingTranslation(false);
+    setIsRecordDetailContentReady(false);
+    setTranslationView(EFFECTIVE_TRANSLATION_VIEW);
+    setIsTranslationViewTooltipOpen(false);
+    setIsTranslationViewTooltipSuppressed(false);
+  };
+
+  const startEditingTranslation = () => {
+    if (!selectedRecord) return;
+
+    setDraftTranslatedText(getDisplayTranslatedText(selectedRecord));
+    setTranslationView(EFFECTIVE_TRANSLATION_VIEW);
+    setIsEditingTranslation(true);
+  };
+
+  const cancelEditingTranslation = () => {
+    if (!selectedRecord || isSavingTranslation) return;
+
+    setDraftTranslatedText(getDisplayTranslatedText(selectedRecord));
+    setIsEditingTranslation(false);
+  };
+
+  const saveEditedTranslation = async () => {
+    if (!selectedRecord || isSavingTranslation) return;
+
+    const nextTranslatedText = draftTranslatedText.trim();
+    const currentTranslatedText = selectedTranslatedText.trim();
+
+    if (!nextTranslatedText) {
+      toast.error("Nội dung bản dịch không được để trống.");
+      return;
+    }
+
+    if (nextTranslatedText === currentTranslatedText) {
+      setDraftTranslatedText(selectedTranslatedText);
+      setIsEditingTranslation(false);
+      return;
+    }
+
+    setIsSavingTranslation(true);
+
+    try {
+      const updatedRecord = await translateApi.updateTranslationHistory(
+        selectedRecord.id,
+        {
+          translatedText: nextTranslatedText,
+        },
+      );
+
+      setSelectedRecord((current) =>
+        current?.id === updatedRecord.id ? updatedRecord : current,
+      );
+      setDraftTranslatedText(getDisplayTranslatedText(updatedRecord));
+      setTranslationView(EFFECTIVE_TRANSLATION_VIEW);
+      setIsEditingTranslation(false);
+      toast.success("Đã cập nhật bản dịch.");
+      await historyQuery.refetch();
+    } catch (error) {
+      toast.error(formatError(error));
+    } finally {
+      setIsSavingTranslation(false);
+    }
+  };
+
+  const toggleTranslationView = () => {
+    const nextView =
+      translationView === ORIGINAL_TRANSLATION_VIEW
+        ? EFFECTIVE_TRANSLATION_VIEW
+        : ORIGINAL_TRANSLATION_VIEW;
+
+    setIsTranslationViewTooltipSuppressed(true);
+    setIsTranslationViewTooltipOpen(false);
+    setTranslationView(nextView);
+    toast.success(
+      nextView === ORIGINAL_TRANSLATION_VIEW
+        ? "Đang xem bản dịch gốc."
+        : "Đang xem bản đã chỉnh sửa.",
+    );
+  };
+
   return (
     <PageLayout
       title="Thống kê bản dịch"
@@ -194,394 +344,130 @@ export default function AdminTranslationHistory() {
       }}
       titleClassName="font-playfair text-[34px] leading-[1.1] font-bold tracking-tight text-[#4b1d18] md:text-[42px]"
     >
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-            <Languages className="size-4" />
-            Tổng số lượt dịch
-          </div>
-          <div className="mt-2 text-3xl font-bold text-slate-900">
-            {stats?.total ?? 0}
-          </div>
-        </div>
-        <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
-            <BarChart3 className="size-4" />
-            Hôm nay
-          </div>
-          <div className="mt-2 text-3xl font-bold text-slate-900">
-            {stats?.today_count ?? 0}
-          </div>
-        </div>
-        <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-sm font-medium text-slate-500">
-            Theo loại xử lý
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {(stats?.by_mode ?? []).map((item) => (
-              <Badge key={item.mode} variant="secondary">
-                {item.mode === "SUMMARIZE" ? "Dịch tóm tắt" : "Dịch"}:{" "}
-                {item.count}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      </div>
+      <TranslationStatsCards stats={stats} />
 
-      <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-white px-4 py-3 shadow-sm lg:flex-row lg:items-end">
-        <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Từ ngày</p>
-            <TranslationHistoryDatePicker
-              value={fromDate}
-              onChange={(value) => {
-                setFromDate(value);
-                setPage(1);
-              }}
-            />
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">
-              Đến ngày
-            </p>
-            <TranslationHistoryDatePicker
-              value={toDate}
-              onChange={(value) => {
-                setToDate(value);
-                setPage(1);
-              }}
-            />
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">
-              Ngôn ngữ nguồn
-            </p>
-            <Select
-              value={sourceLang}
-              onValueChange={(value) => {
-                setSourceLang(value);
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="w-full bg-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_LANGUAGES}>Tất cả</SelectItem>
-                {TRANSLATION_LANGUAGES.map((language) => (
-                  <SelectItem key={language.value} value={language.value}>
-                    {language.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">
-              Ngôn ngữ dịch
-            </p>
-            <Select
-              value={targetLang}
-              onValueChange={(value) => {
-                setTargetLang(value);
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="w-full bg-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_LANGUAGES}>Tất cả</SelectItem>
-                {TRANSLATION_LANGUAGES.map((language) => (
-                  <SelectItem key={language.value} value={language.value}>
-                    {language.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Số dòng</p>
-            <Select
-              value={String(pageSize)}
-              onValueChange={(value) => {
-                setPageSize(Number(value) as 10 | 25 | 50);
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="w-full bg-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10 dòng</SelectItem>
-                <SelectItem value="25">25 dòng</SelectItem>
-                <SelectItem value="50">50 dòng</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-end">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={resetFilters}
-            >
-              Xóa bộ lọc
-            </Button>
-          </div>
-        </div>
-      </div>
+      <TranslationHistoryFilters
+        fromDate={fromDate}
+        onFromDateChange={(value) => {
+          setFromDate(value);
+          setPage(1);
+        }}
+        onPageSizeChange={(value) => {
+          setPageSize(value);
+          setPage(1);
+        }}
+        onReset={resetFilters}
+        onSourceLangChange={(value) => {
+          setSourceLang(value);
+          setPage(1);
+        }}
+        onTargetLangChange={(value) => {
+          setTargetLang(value);
+          setPage(1);
+        }}
+        onToDateChange={(value) => {
+          setToDate(value);
+          setPage(1);
+        }}
+        pageSize={pageSize}
+        sourceLang={sourceLang}
+        targetLang={targetLang}
+        toDate={toDate}
+      />
 
       <div
         ref={listTopRef}
         className="min-h-0 flex-1 overflow-auto rounded-md border border-slate-200 bg-white shadow-sm"
       >
-        {historyQuery.isLoading ? (
-          <div className="flex min-h-64 items-center justify-center">
-            <Loader2 className="size-8 animate-spin text-slate-400" />
-          </div>
-        ) : historyQuery.isError ? (
-          <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
-            <SearchX className="size-10 text-red-400" />
-            <p className="text-sm font-medium text-red-600">
-              Không thể tải dữ liệu dịch.
-            </p>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
-            <SearchX className="size-10 text-slate-300" />
-            <p className="text-sm font-medium text-slate-600">
-              Chưa có bản dịch phù hợp.
-            </p>
-          </div>
-        ) : (
-          <Table className="min-w-230 table-fixed">
-            <TableHeader className="sticky top-0 z-10 bg-slate-50">
-              <TableRow>
-                <TableHead className="w-37.5">Thời gian</TableHead>
-                <TableHead className="w-35">Người dịch</TableHead>
-                <TableHead className="w-22.5">Luồng</TableHead>
-                <TableHead className="w-40">Ngôn ngữ</TableHead>
-                <TableHead className="w-24">Loại tệp</TableHead>
-                <TableHead className="w-50 text-right">Thao tác</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow
-                  key={item.id}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedRecord(item)}
-                >
-                  <TableCell className="whitespace-nowrap align-top text-sm">
-                    {formatDateTime(item.created_at)}
-                  </TableCell>
-                  <TableCell className="align-top text-sm">
-                    <span className="block truncate">
-                      {item.operator.username || item.operator.email || "-"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="align-top">
-                    <Badge variant="outline">
-                      {item.mode === "SUMMARIZE" ? "Tóm tắt" : "Dịch"}
-                    </Badge>
-                  </TableCell>
-
-                  <TableCell className="align-top text-sm">
-                    <span className="block truncate">
-                      {getLanguageLabel(item.source_lang)} {"->"}{" "}
-                      {getLanguageLabel(item.target_lang)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="align-top">
-                    <Badge variant="secondary">
-                      {getFileTypeLabel(item.source_file_type)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="align-top">
-                    <div className="flex justify-end gap-2">
-                      {(["docx", "pdf"] as const).map((format) => {
-                        const isExporting =
-                          exportingRecord?.id === item.id &&
-                          exportingRecord.format === format;
-
-                        return (
-                          <Button
-                            key={format}
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={Boolean(exportingRecord)}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void downloadTranslation(
-                                item.id,
-                                item.translated_text,
-                                item.mode,
-                                format,
-                              );
-                            }}
-                          >
-                            {isExporting ? (
-                              <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                              <Download className="size-4" />
-                            )}
-                            {format.toUpperCase()}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <TranslationHistoryTable
+          exportingRecord={exportingRecord}
+          isError={historyQuery.isError}
+          isLoading={historyQuery.isLoading}
+          items={items}
+          onDownload={(record, format) =>
+            downloadTranslation(
+              record.id,
+              getDisplayTranslatedText(record),
+              record.mode,
+              format,
+            )
+          }
+          onOpenRecord={openRecordDetail}
+        />
       </div>
 
-      <div className="flex shrink-0 flex-col gap-3 rounded-md border border-slate-200 bg-white px-4 py-3 shadow-sm md:flex-row md:items-center md:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Hiển thị {firstRecordIndex}-{lastRecordIndex} / {totalRecords} bản
-          dịch
-        </p>
-        <Pagination className="mx-0 w-auto justify-end">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                disabled={!canGoPrevious}
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (!canGoPrevious) return;
-                  handlePageChange(page - 1);
-                }}
-              />
-            </PaginationItem>
-            {paginationItems.map((item, index) =>
-              item === "ellipsis" ? (
-                <PaginationItem key={`ellipsis-${index}`}>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              ) : (
-                <PaginationItem key={item}>
-                  <PaginationLink
-                    isActive={item === page}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      handlePageChange(item);
-                    }}
-                  >
-                    {item}
-                  </PaginationLink>
-                </PaginationItem>
-              ),
-            )}
-            <PaginationItem>
-              <PaginationNext
-                disabled={!canGoNext}
-                onClick={(event) => {
-                  event.preventDefault();
-                  if (!canGoNext) return;
-                  handlePageChange(page + 1);
-                }}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      </div>
+      <TranslationHistoryPagination
+        canGoNext={canGoNext}
+        canGoPrevious={canGoPrevious}
+        firstRecordIndex={firstRecordIndex}
+        lastRecordIndex={lastRecordIndex}
+        onPageChange={handlePageChange}
+        page={page}
+        paginationItems={paginationItems}
+        totalRecords={totalRecords}
+      />
 
       <Dialog
         open={Boolean(selectedRecord)}
         onOpenChange={(open) => {
-          if (!open) setSelectedRecord(null);
+          if (!open && !isSavingTranslation) closeRecordDetail();
         }}
       >
-        <DialogContent className="max-w-7xl">
+        <DialogContent
+          className="max-h-[94vh] max-w-[min(98vw,1680px)] gap-4 overflow-hidden p-6"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            recordDetailTitleRef.current?.focus();
+          }}
+        >
           <DialogHeader>
-            <DialogTitle>Chi tiết bản dịch</DialogTitle>
+            <DialogTitle ref={recordDetailTitleRef} tabIndex={-1}>
+              Chi tiết bản dịch
+            </DialogTitle>
           </DialogHeader>
           {selectedRecord ? (
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="overflow-hidden rounded-md border bg-white">
-                <div className="flex min-h-12 items-center justify-between gap-3 border-b px-4 py-2">
-                  <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                    Văn bản gốc
-                  </p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      void copyText(
-                        selectedRecord.source_text,
-                        "Đã sao chép văn bản gốc.",
-                      )
-                    }
-                  >
-                    <Copy className="size-4" />
-                    Sao chép
-                  </Button>
-                </div>
-                <pre className="max-h-[55vh] min-h-72 overflow-auto whitespace-pre-wrap bg-slate-50 p-4 text-sm text-slate-700">
-                  {selectedRecord.source_text}
-                </pre>
-              </div>
-              <div className="overflow-hidden rounded-md border bg-white">
-                <div className="flex min-h-12 flex-wrap items-center justify-between gap-3 border-b px-4 py-2">
-                  <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                    Bản dịch
-                  </p>
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        void copyText(
-                          selectedRecord.translated_text,
-                          "Đã sao chép bản dịch.",
-                        )
-                      }
-                    >
-                      <Copy className="size-4" />
-                      Sao chép
-                    </Button>
-                    {(["docx", "pdf"] as const).map((format) => {
-                      const isExporting =
-                        exportingRecord?.id === selectedRecord.id &&
-                        exportingRecord.format === format;
-
-                      return (
-                        <Button
-                          key={format}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={Boolean(exportingRecord)}
-                          onClick={() =>
-                            void downloadTranslation(
-                              selectedRecord.id,
-                              selectedRecord.translated_text,
-                              selectedRecord.mode,
-                              format,
-                            )
-                          }
-                        >
-                          {isExporting ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : (
-                            <Download className="size-4" />
-                          )}
-                          {format.toUpperCase()}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <pre className="max-h-[55vh] min-h-72 overflow-auto whitespace-pre-wrap bg-slate-50 p-4 text-sm text-slate-700">
-                  {selectedRecord.translated_text}
-                </pre>
-              </div>
+            <div className="grid min-h-0 gap-4 lg:grid-cols-2">
+              <SourceTextPanel
+                isContentLoading={isRecordDetailContentLoading}
+                onCopy={(text, message) => void copyText(text, message)}
+                record={selectedRecord}
+              />
+              <TranslatedTextPanel
+                canEditTranslation={canEditTranslation}
+                canViewOriginalTranslation={canViewOriginalTranslation}
+                detailTranslatedText={detailTranslatedText}
+                draftTranslatedText={draftTranslatedText}
+                exportingFormat={
+                  exportingRecord?.id === selectedRecord.id
+                    ? exportingRecord.format
+                    : null
+                }
+                isContentLoading={isRecordDetailContentLoading}
+                isEditingTranslation={isEditingTranslation}
+                isSavingTranslation={isSavingTranslation}
+                isViewTooltipOpen={isTranslationViewTooltipOpen}
+                isViewTooltipSuppressed={isTranslationViewTooltipSuppressed}
+                onCancelEditing={cancelEditingTranslation}
+                onCopy={(text, message) => void copyText(text, message)}
+                onDownload={(format) =>
+                  downloadTranslation(
+                    selectedRecord.id,
+                    detailTranslatedText,
+                    selectedRecord.mode,
+                    format,
+                  )
+                }
+                onDraftChange={setDraftTranslatedText}
+                onSaveEditing={() => void saveEditedTranslation()}
+                onStartEditing={startEditingTranslation}
+                onToggleView={toggleTranslationView}
+                onViewTooltipOpenChange={setIsTranslationViewTooltipOpen}
+                onViewTooltipSuppressChange={
+                  setIsTranslationViewTooltipSuppressed
+                }
+                record={selectedRecord}
+                translationView={translationView}
+              />
             </div>
           ) : null}
         </DialogContent>

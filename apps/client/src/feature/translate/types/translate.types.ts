@@ -17,6 +17,7 @@ export interface TranslateResponse {
   success?: boolean;
   original_text?: string;
   translated_text: string;
+  history_record_id?: string;
   target_lang: string;
 }
 
@@ -95,8 +96,13 @@ export interface TranslationHistoryFilter {
 
 export interface TranslationHistoryRecord {
   id: string;
+  user_id?: string;
   source_text: string;
   translated_text: string;
+  edited_translated_text?: string | null;
+  effective_translated_text?: string | null;
+  edited_at?: string | null;
+  edited_by?: string | null;
   source_lang?: string | null;
   target_lang: string;
   source_file_type?: string | null;

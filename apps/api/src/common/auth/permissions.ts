@@ -31,6 +31,7 @@ export const S2T = {
 
 export const TRANSLATE = {
   RUN: 'translate.run',
+  UPDATE_HISTORY: 'translate.history.update',
 } as const;
 
 export const SESSIONS = {
@@ -50,6 +51,7 @@ export const ALL_PERMISSIONS = [
   OCR.RUN, // Chạy OCR tài liệu qua AI Core
   S2T.RUN, // Chạy Speech-to-Text qua AI Core
   TRANSLATE.RUN, // Chạy dịch văn bản qua AI Core
+  TRANSLATE.UPDATE_HISTORY, // Chỉnh sửa bản dịch đã lưu trong lịch sử
   SESSIONS.READ, // Xem danh sách và chi tiết các phiên đăng nhập
 ] as const;
 

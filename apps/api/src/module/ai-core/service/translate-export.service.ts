@@ -1,19 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { AlignmentType, Document, Packer, Paragraph, TextRun } from 'docx';
+
+import {
+  DOCX_FONT_BY_SCRIPT,
+  DocxTextRunOptions,
+  MIME_TYPES,
+  PDF_FONT_BY_SCRIPT,
+  SupportedScript,
+} from '@/module/ai-core/constants/font-text';
 import pdfMake from 'pdfmake';
-import robotoFonts from 'pdfmake/fonts/Roboto';
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
 import {
   TranslateExportRequestDto,
   type TranslateExportFormat,
 } from '../dto/translate-request.dto';
-
-const MIME_TYPES: Record<TranslateExportFormat, string> = {
-  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  pdf: 'application/pdf',
-};
-
-pdfMake.setFonts(robotoFonts);
 
 @Injectable()
 export class TranslateExportService {
@@ -36,8 +36,7 @@ export class TranslateExportService {
       (block) =>
         new Paragraph({
           children: [
-            new TextRun({
-              text: block,
+            ...this.toDocxTextRuns(block, {
               size: 24,
             }),
           ],
@@ -56,13 +55,10 @@ export class TranslateExportService {
               ? [
                   new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    children: [
-                      new TextRun({
-                        text: title.trim(),
-                        bold: true,
-                        size: 32,
-                      }),
-                    ],
+                    children: this.toDocxTextRuns(title.trim(), {
+                      bold: true,
+                      size: 32,
+                    }),
                     spacing: {
                       after: 300,
                     },
@@ -83,7 +79,7 @@ export class TranslateExportService {
       ...(title?.trim()
         ? [
             {
-              text: title.trim(),
+              text: this.toPdfTextRuns(title.trim()),
               style: 'title',
               alignment: 'center' as const,
               margin: [0, 0, 0, 18] as [number, number, number, number],
@@ -91,7 +87,7 @@ export class TranslateExportService {
           ]
         : []),
       ...this.toTextBlocks(text).map((block) => ({
-        text: block,
+        text: this.toPdfTextRuns(block),
         margin: [0, 0, 0, 10] as [number, number, number, number],
       })),
     ];
@@ -99,7 +95,7 @@ export class TranslateExportService {
     const definition: TDocumentDefinitions = {
       content,
       defaultStyle: {
-        font: 'Roboto',
+        font: PDF_FONT_BY_SCRIPT.default,
         fontSize: 12,
         lineHeight: 1.35,
       },
@@ -113,6 +109,57 @@ export class TranslateExportService {
     };
 
     return pdfMake.createPdf(definition).getBuffer();
+  }
+
+  private toPdfTextRuns(text: string) {
+    return this.segmentTextByScript(text).map((segment) => ({
+      text: segment.text,
+      font: PDF_FONT_BY_SCRIPT[segment.script],
+    }));
+  }
+
+  private toDocxTextRuns(text: string, options: DocxTextRunOptions) {
+    return this.segmentTextByScript(text).map(
+      (segment) =>
+        new TextRun({
+          ...options,
+          text: segment.text,
+          font: DOCX_FONT_BY_SCRIPT[segment.script],
+        }),
+    );
+  }
+
+  private segmentTextByScript(text: string) {
+    const segments: Array<{ script: SupportedScript; text: string }> = [];
+
+    for (const char of text) {
+      const script = this.detectScript(char);
+      const lastSegment = segments[segments.length - 1];
+
+      if (lastSegment?.script === script) {
+        lastSegment.text += char;
+      } else {
+        segments.push({ script, text: char });
+      }
+    }
+
+    return segments;
+  }
+
+  private detectScript(char: string): SupportedScript {
+    if (
+      /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af]/u.test(
+        char,
+      )
+    ) {
+      return 'cjk';
+    }
+
+    if (/[\u0e00-\u0e7f]/u.test(char)) {
+      return 'thai';
+    }
+
+    return 'default';
   }
 
   private toTextBlocks(text: string) {

@@ -17,6 +17,7 @@ export const APP_PERMISSIONS = [
   "ocr.run",
   "s2t.run",
   "translate.run",
+  "translate.history.update",
   "sessions.read",
 ] as const;
 

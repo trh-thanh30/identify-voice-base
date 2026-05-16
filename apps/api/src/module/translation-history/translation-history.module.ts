@@ -5,6 +5,7 @@ import { TranslationHistoryService } from './service/translation-history.service
 import { TranslationHistoryController } from './translation-history.controller';
 import { FindTranslationHistoryUseCase } from './use-cases/find-translation-history.usecase';
 import { RecordTranslationUseCase } from './use-cases/record-translation.usecase';
+import { UpdateTranslationHistoryUseCase } from './use-cases/update-translation-history.usecase';
 
 @Module({
   controllers: [TranslationHistoryController],
@@ -13,6 +14,7 @@ import { RecordTranslationUseCase } from './use-cases/record-translation.usecase
     TranslationHistoryService,
     FindTranslationHistoryUseCase,
     RecordTranslationUseCase,
+    UpdateTranslationHistoryUseCase,
     AuthTokenService,
   ],
   exports: [TranslationHistoryService],
